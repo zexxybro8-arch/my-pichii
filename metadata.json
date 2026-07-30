@@ -1,0 +1,6 @@
+{
+  "name": "Romantic Surprise & Admin Panel",
+  "description": "Customizable romantic anniversary surprise web app with interactive features and a complete admin management CMS.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

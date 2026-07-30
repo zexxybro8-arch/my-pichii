@@ -1,0 +1,51 @@
+{
+  "entities": {
+    "appConfig": {
+      "title": "App Configuration",
+      "description": "Stores draft and published configuration for the romantic surprise web app.",
+      "type": "object",
+      "properties": {
+        "girlfriendName": { "type": "string" },
+        "boyfriendName": { "type": "string" },
+        "relationshipStartDate": { "type": "string" },
+        "anniversaryDate": { "type": "string" },
+        "footerText": { "type": "string" },
+        "welcomePopup": { "type": "object" },
+        "secretPin": { "type": "object" },
+        "anniversarySettings": { "type": "object" },
+        "balloonMessages": { "type": "array" },
+        "puzzleConfig": { "type": "object" },
+        "scratchCardConfig": { "type": "object" },
+        "loveLetter": { "type": "object" },
+        "finalCelebration": { "type": "object" },
+        "themeSettings": { "type": "object" },
+        "musicSettings": { "type": "object" }
+      }
+    },
+    "memories": {
+      "title": "Photo Memories",
+      "description": "Photo memories with captions and order.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "image": { "type": "string" },
+        "caption": { "type": "string" },
+        "order": { "type": "number" },
+        "createdAt": { "type": "string" }
+      }
+    },
+    "songs": {
+      "title": "Playlist Songs",
+      "description": "Music track playlist items.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "url": { "type": "string" },
+        "duration": { "type": "number" },
+        "order": { "type": "number" },
+        "isDefault": { "type": "boolean" }
+      }
+    }
+  }
+}
