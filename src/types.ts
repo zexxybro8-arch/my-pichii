@@ -1,8 +1,9 @@
 export interface Song {
   id: string;
   title: string;
-  url: string; // Data URL or audio link
+  url: string; // Firebase Storage download URL or audio link
   duration?: number;
+  fileName?: string;
   order: number;
   isDefault?: boolean;
 }

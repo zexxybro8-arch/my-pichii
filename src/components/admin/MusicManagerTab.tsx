@@ -12,8 +12,12 @@ import {
   Check,
   Volume2,
   Sliders,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
 } from 'lucide-react';
 import { Song, MusicSettingsConfig } from '../../types';
+import { uploadAudioToStorage } from '../../lib/firebase';
 
 interface MusicManagerTabProps {
   songs: Song[];
@@ -32,33 +36,62 @@ export const MusicManagerTab: React.FC<MusicManagerTabProps> = ({
 }) => {
   const [newTitle, setNewTitle] = useState('');
   const [newUrl, setNewUrl] = useState('');
+  const [newFileName, setNewFileName] = useState('');
+  const [newDuration, setNewDuration] = useState<number | undefined>(undefined);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadError, setUploadError] = useState('');
+
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [previewAudio, setPreviewAudio] = useState<HTMLAudioElement | null>(null);
 
-  const handleAudioFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAudioFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      if (!newTitle) {
-        setNewTitle(file.name.replace(/\.[^/.]+$/, ''));
-      }
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          setNewUrl(event.target.result as string);
+    if (!file) return;
+
+    const baseTitle = file.name.replace(/\.[^/.]+$/, '');
+    if (!newTitle) {
+      setNewTitle(baseTitle);
+    }
+    setNewFileName(file.name);
+
+    // Read metadata duration
+    try {
+      const tempAudio = new Audio(URL.createObjectURL(file));
+      tempAudio.onloadedmetadata = () => {
+        if (tempAudio.duration && !isNaN(tempAudio.duration)) {
+          setNewDuration(Math.round(tempAudio.duration));
         }
       };
-      reader.readAsDataURL(file);
+    } catch {}
+
+    setIsUploading(true);
+    setUploadProgress(0);
+    setUploadError('');
+
+    try {
+      const downloadUrl = await uploadAudioToStorage(file, (pct) => {
+        setUploadProgress(pct);
+      });
+      setNewUrl(downloadUrl);
+    } catch (err: any) {
+      console.error('File upload error:', err);
+      setUploadError(err?.message || 'Failed to upload MP3 file to Firebase Storage.');
+    } finally {
+      setIsUploading(false);
     }
   };
 
   const handleAddSong = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newUrl) return;
+    if (!newUrl || isUploading) return;
 
     const newSong: Song = {
       id: `s_${Date.now()}`,
       title: newTitle || 'Romantic Melody',
       url: newUrl,
+      fileName: newFileName || undefined,
+      duration: newDuration,
       order: songs.length + 1,
       isDefault: songs.length === 0,
     };
@@ -72,6 +105,9 @@ export const MusicManagerTab: React.FC<MusicManagerTabProps> = ({
 
     setNewTitle('');
     setNewUrl('');
+    setNewFileName('');
+    setNewDuration(undefined);
+    setUploadProgress(0);
   };
 
   const handleDelete = (id: string) => {
@@ -242,16 +278,60 @@ export const MusicManagerTab: React.FC<MusicManagerTabProps> = ({
             <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
               Upload MP3 Audio File or Paste URL
             </label>
-            <label className="px-4 py-2.5 rounded-xl border border-dashed border-rose-300 dark:border-rose-900 bg-rose-50/50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-300 text-xs font-bold cursor-pointer hover:bg-rose-100/50 flex items-center justify-center gap-2 mb-2">
-              <Upload className="w-4 h-4" />
-              <span>Choose MP3 File</span>
+            <label
+              className={`px-4 py-2.5 rounded-xl border border-dashed text-xs font-bold transition flex items-center justify-center gap-2 mb-2 ${
+                isUploading
+                  ? 'border-slate-300 bg-slate-100 text-slate-400 cursor-not-allowed'
+                  : 'border-rose-300 dark:border-rose-900 bg-rose-50/50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-300 hover:bg-rose-100/50 cursor-pointer'
+              }`}
+            >
+              {isUploading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-rose-500" />
+                  <span>Uploading to Firebase Storage ({uploadProgress}%)...</span>
+                </>
+              ) : (
+                <>
+                  <Upload className="w-4 h-4" />
+                  <span>Choose MP3 File</span>
+                </>
+              )}
               <input
                 type="file"
                 accept="audio/*"
                 onChange={handleAudioFileUpload}
+                disabled={isUploading}
                 className="hidden"
               />
             </label>
+
+            {/* Progress Bar during upload */}
+            {isUploading && (
+              <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2 mb-2 overflow-hidden">
+                <div
+                  className="bg-rose-500 h-2 rounded-full transition-all duration-200"
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              </div>
+            )}
+
+            {/* Uploaded Firebase Storage Badge */}
+            {newUrl && newUrl.includes('firebasestorage') && !isUploading && (
+              <div className="mb-2 p-2 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-xl flex items-center gap-2 text-xs text-emerald-700 dark:text-emerald-300 font-medium">
+                <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                <span className="truncate">
+                  Uploaded to Firebase Storage {newFileName ? `(${newFileName})` : ''}
+                </span>
+              </div>
+            )}
+
+            {uploadError && (
+              <div className="mb-2 p-2 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 text-rose-600 text-xs font-semibold rounded-xl flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                <span>{uploadError}</span>
+              </div>
+            )}
+
             <input
               type="text"
               value={newUrl}
@@ -277,11 +357,20 @@ export const MusicManagerTab: React.FC<MusicManagerTabProps> = ({
 
         <button
           type="submit"
-          disabled={!newUrl}
+          disabled={!newUrl || isUploading}
           className="w-full py-3 rounded-xl bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-white font-bold text-xs shadow-md transition flex items-center justify-center gap-2"
         >
-          <Plus className="w-4 h-4" />
-          <span>Add Song to Playlist</span>
+          {isUploading ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>Uploading File to Storage...</span>
+            </>
+          ) : (
+            <>
+              <Plus className="w-4 h-4" />
+              <span>Add Song to Playlist</span>
+            </>
+          )}
         </button>
       </form>
 

@@ -15,6 +15,13 @@ import {
   getAuth,
   Auth,
 } from 'firebase/auth';
+import {
+  getStorage,
+  ref,
+  uploadBytesResumable,
+  getDownloadURL,
+  FirebaseStorage,
+} from 'firebase/storage';
 import { AppConfig, MemoryPhoto, Song } from '../types';
 import {
   INITIAL_DEFAULT_CONFIG,
@@ -26,6 +33,7 @@ import firebaseConfig from '../../firebase-applet-config.json';
 let app: FirebaseApp | null = null;
 let db: Firestore | null = null;
 let auth: Auth | null = null;
+let storage: FirebaseStorage | null = null;
 
 try {
   if (getApps().length === 0) {
@@ -42,11 +50,19 @@ try {
   }
 
   auth = getAuth(app);
+
+  if (app) {
+    try {
+      storage = getStorage(app);
+    } catch (stErr) {
+      console.warn('Firebase storage init warning:', stErr);
+    }
+  }
 } catch (error) {
   console.warn('Firebase initialization error, using local storage fallback:', error);
 }
 
-export { app, db, auth };
+export { app, db, auth, storage };
 
 // Connection test on boot
 export async function testConnection() {
@@ -223,6 +239,46 @@ export async function saveMemories(memories: MemoryPhoto[]): Promise<void> {
   }
 }
 
+export async function uploadAudioToStorage(
+  file: File,
+  onProgress?: (pct: number) => void
+): Promise<string> {
+  if (!storage) {
+    throw new Error('Firebase Storage is not initialized.');
+  }
+
+  const cleanFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const storageRef = ref(storage, `songs/${Date.now()}_${cleanFileName}`);
+
+  const uploadTask = uploadBytesResumable(storageRef, file, {
+    contentType: file.type || 'audio/mpeg',
+  });
+
+  return new Promise((resolve, reject) => {
+    uploadTask.on(
+      'state_changed',
+      (snapshot) => {
+        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+        if (onProgress) {
+          onProgress(Math.round(progress));
+        }
+      },
+      (error) => {
+        console.error('Upload to Firebase Storage failed:', error);
+        reject(error);
+      },
+      async () => {
+        try {
+          const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
+          resolve(downloadUrl);
+        } catch (err) {
+          reject(err);
+        }
+      }
+    );
+  });
+}
+
 export async function fetchSongs(): Promise<Song[]> {
   if (db) {
     try {
@@ -230,25 +286,39 @@ export async function fetchSongs(): Promise<Song[]> {
       const snap = await getDocs(colRef);
       if (!snap.empty) {
         const list: Song[] = [];
-        snap.forEach((d) => list.push(d.data() as Song));
+        snap.forEach((d) => {
+          const s = d.data() as Song;
+          // Clean out legacy base64 data strings if present
+          if (s.url && s.url.startsWith('data:audio')) {
+            s.url = '';
+          }
+          if (s.url) {
+            list.push(s);
+          }
+        });
         list.sort((a, b) => a.order - b.order);
-        return list;
-      } else {
-        // Seed default songs to Firestore
-        for (const song of INITIAL_DEFAULT_SONGS) {
-          await setDoc(doc(db, 'songs', song.id), song);
+        if (list.length > 0) {
+          return list;
         }
-        return INITIAL_DEFAULT_SONGS;
       }
+
+      // Seed default songs to Firestore
+      for (const song of INITIAL_DEFAULT_SONGS) {
+        await setDoc(doc(db, 'songs', song.id), song);
+      }
+      return INITIAL_DEFAULT_SONGS;
     } catch (e) {
       console.warn('Firestore songs fetch error:', e);
     }
   }
-  return getLocalSongs();
+  return getLocalSongs().filter((s) => s.url && !s.url.startsWith('data:audio'));
 }
 
 export async function saveSongs(songs: Song[]): Promise<void> {
-  setLocalSongs(songs);
+  // Never save base64 strings in local storage or Firestore
+  const cleanSongs = songs.filter((s) => s.url && !s.url.startsWith('data:audio'));
+  setLocalSongs(cleanSongs);
+
   if (db) {
     try {
       const colRef = collection(db, 'songs');
@@ -256,7 +326,7 @@ export async function saveSongs(songs: Song[]): Promise<void> {
       const existingIds = new Set<string>();
       existingSnap.forEach((s) => existingIds.add(s.id));
 
-      const newIds = new Set(songs.map((s) => s.id));
+      const newIds = new Set(cleanSongs.map((s) => s.id));
 
       // Remove deleted song documents
       const deletePromises: Promise<void>[] = [];
@@ -267,8 +337,20 @@ export async function saveSongs(songs: Song[]): Promise<void> {
       });
       await Promise.all(deletePromises);
 
-      // Save updated song list
-      const setPromises = songs.map((song) => setDoc(doc(db, 'songs', song.id), song));
+      // Save each song as a separate document in the songs collection
+      const setPromises = cleanSongs.map((song) => {
+        const docPayload: Record<string, any> = {
+          id: song.id,
+          title: song.title || 'Untitled Song',
+          url: song.url,
+          order: song.order || 1,
+          isDefault: Boolean(song.isDefault),
+        };
+        if (song.duration) docPayload.duration = song.duration;
+        if (song.fileName) docPayload.fileName = song.fileName;
+
+        return setDoc(doc(db, 'songs', song.id), docPayload);
+      });
       await Promise.all(setPromises);
     } catch (e) {
       console.error('Firestore songs save error:', e);
