@@ -61,14 +61,38 @@ import { ThemeSettingsTab } from './components/admin/ThemeSettingsTab';
 import { LivePreviewTab } from './components/admin/LivePreviewTab';
 import { PublishTab } from './components/admin/PublishTab';
 
-import { Menu, ArrowLeft, Globe, Lock } from 'lucide-react';
+import { Menu, ArrowLeft, Globe, Lock, CheckCircle2, AlertCircle, Loader2, LogOut } from 'lucide-react';
 
 export default function App() {
   const [viewMode, setViewMode] = useState<'public' | 'admin'>('public');
-  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(false);
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
+    return localStorage.getItem('admin_authenticated') === 'true';
+  });
   const [showAdminLoginModal, setShowAdminLoginModal] = useState<boolean>(false);
   const [activeAdminTab, setActiveAdminTab] = useState<AdminTab>('dashboard');
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState<boolean>(false);
+
+  const handleAdminLogout = () => {
+    localStorage.removeItem('admin_authenticated');
+    setIsAdminAuthenticated(false);
+    setViewMode('public');
+    showToast('success', 'Logged out from Admin Panel.');
+  };
+
+  // Notification Toast State
+  const [toast, setToast] = useState<{
+    type: 'success' | 'error' | 'loading' | null;
+    message: string;
+  }>({ type: null, message: '' });
+
+  const showToast = (type: 'success' | 'error' | 'loading', message: string) => {
+    setToast({ type, message });
+    if (type !== 'loading') {
+      setTimeout(() => {
+        setToast((prev) => (prev.message === message ? { type: null, message: '' } : prev));
+      }, 4000);
+    }
+  };
 
   // Data state
   const [config, setConfig] = useState<AppConfig>(INITIAL_DEFAULT_CONFIG);
@@ -127,28 +151,71 @@ export default function App() {
     };
   }, []);
 
-  // Sync draft edits to Firestore / local state
-  const handleSaveDraftConfig = async (updated: Partial<AppConfig>) => {
+  // Sync edits to Firestore / local state
+  const handleSaveDraftConfig = async (updated: Partial<AppConfig>, isExplicitSave = false) => {
     const newConfig = { ...config, ...updated };
     setConfig(newConfig);
-    setIsPublishedSynced(false);
-    await saveAppConfig(newConfig, false);
+    setPublishedConfig(newConfig);
+    setIsPublishedSynced(true);
+
+    if (isExplicitSave) {
+      showToast('loading', 'Saving configuration changes to Firestore...');
+    }
+
+    try {
+      await saveAppConfig(newConfig, true);
+      if (isExplicitSave) {
+        showToast('success', 'Changes saved permanently to Firestore! ✨');
+      }
+    } catch (err: any) {
+      console.error('Firestore save failed:', err);
+      showToast('error', `Failed to save changes: ${err?.message || 'Firestore connection issue'}`);
+    }
   };
 
-  const handleSaveMemories = async (newMemories: MemoryPhoto[]) => {
+  const handleSaveMemories = async (newMemories: MemoryPhoto[], isExplicitSave = false) => {
     setMemories(newMemories);
-    await saveMemories(newMemories);
+    if (isExplicitSave) {
+      showToast('loading', 'Saving photo memories to Firestore...');
+    }
+    try {
+      await saveMemories(newMemories);
+      if (isExplicitSave) {
+        showToast('success', 'Photo memories saved permanently to Firestore! 📸');
+      }
+    } catch (err: any) {
+      console.error('Firestore save memories failed:', err);
+      showToast('error', `Failed to save memories: ${err?.message || 'Firestore connection issue'}`);
+    }
   };
 
-  const handleSaveSongs = async (newSongs: Song[]) => {
+  const handleSaveSongs = async (newSongs: Song[], isExplicitSave = false) => {
     setSongs(newSongs);
-    await saveSongs(newSongs);
+    if (isExplicitSave) {
+      showToast('loading', 'Saving playlist to Firestore...');
+    }
+    try {
+      await saveSongs(newSongs);
+      if (isExplicitSave) {
+        showToast('success', 'Music playlist saved permanently to Firestore! 🎵');
+      }
+    } catch (err: any) {
+      console.error('Firestore save songs failed:', err);
+      showToast('error', `Failed to save playlist: ${err?.message || 'Firestore connection issue'}`);
+    }
   };
 
   const handlePublishNow = async () => {
-    await publishDraftToLive(config);
-    setPublishedConfig(config);
-    setIsPublishedSynced(true);
+    showToast('loading', 'Publishing changes to live website...');
+    try {
+      await publishDraftToLive(config);
+      setPublishedConfig(config);
+      setIsPublishedSynced(true);
+      showToast('success', 'Published live to Firestore! 🚀');
+    } catch (err: any) {
+      console.error('Publish failed:', err);
+      showToast('error', `Publish failed: ${err?.message || 'Firestore connection issue'}`);
+    }
   };
 
   const handleContinueWelcomePopup = () => {
@@ -302,10 +369,7 @@ export default function App() {
             <AdminSidebar
               activeTab={activeAdminTab}
               setActiveTab={setActiveAdminTab}
-              onLogout={() => {
-                setIsAdminAuthenticated(false);
-                setViewMode('public');
-              }}
+              onLogout={handleAdminLogout}
               isPublishedSynced={isPublishedSynced}
             />
           </div>
@@ -322,10 +386,7 @@ export default function App() {
                   activeTab={activeAdminTab}
                   setActiveTab={setActiveAdminTab}
                   onCloseMobile={() => setMobileSidebarOpen(false)}
-                  onLogout={() => {
-                    setIsAdminAuthenticated(false);
-                    setViewMode('public');
-                  }}
+                  onLogout={handleAdminLogout}
                   isPublishedSynced={isPublishedSynced}
                 />
               </div>
@@ -357,7 +418,7 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-3">
                 <span className="text-xs text-slate-400 italic hidden sm:inline">
                   {isPublishedSynced ? 'All changes published' : 'Unpublished draft changes'}
                 </span>
@@ -367,6 +428,14 @@ export default function App() {
                 >
                   <Globe className="w-4 h-4 text-pink-400" />
                   <span>View Public Website</span>
+                </button>
+                <button
+                  onClick={handleAdminLogout}
+                  className="px-3.5 py-2 rounded-lg bg-red-500/10 text-red-400 border border-red-500/30 hover:bg-red-500/20 text-xs font-semibold transition flex items-center gap-1.5"
+                  title="Logout from Admin Panel"
+                >
+                  <LogOut className="w-4 h-4 text-red-400" />
+                  <span>Logout</span>
                 </button>
               </div>
             </header>
@@ -387,8 +456,8 @@ export default function App() {
               {activeAdminTab === 'couple' && (
                 <CoupleInfoTab
                   config={config}
-                  onChange={handleSaveDraftConfig}
-                  onSave={() => handleSaveDraftConfig({})}
+                  onChange={(up) => handleSaveDraftConfig(up, false)}
+                  onSave={() => handleSaveDraftConfig({}, true)}
                 />
               )}
 
@@ -396,9 +465,9 @@ export default function App() {
                 <WelcomePopupTab
                   config={config.welcomePopup}
                   onChange={(up) =>
-                    handleSaveDraftConfig({ welcomePopup: { ...config.welcomePopup, ...up } })
+                    handleSaveDraftConfig({ welcomePopup: { ...config.welcomePopup, ...up } }, false)
                   }
-                  onSave={() => handleSaveDraftConfig({})}
+                  onSave={() => handleSaveDraftConfig({}, true)}
                 />
               )}
 
@@ -406,9 +475,9 @@ export default function App() {
                 <SecretPinTab
                   config={config.secretPin}
                   onChange={(up) =>
-                    handleSaveDraftConfig({ secretPin: { ...config.secretPin, ...up } })
+                    handleSaveDraftConfig({ secretPin: { ...config.secretPin, ...up } }, false)
                   }
-                  onSave={() => handleSaveDraftConfig({})}
+                  onSave={() => handleSaveDraftConfig({}, true)}
                 />
               )}
 
@@ -416,19 +485,20 @@ export default function App() {
                 <AnniversaryTab
                   config={config.anniversarySettings}
                   onChange={(up) =>
-                    handleSaveDraftConfig({
-                      anniversarySettings: { ...config.anniversarySettings, ...up },
-                    })
+                    handleSaveDraftConfig(
+                      { anniversarySettings: { ...config.anniversarySettings, ...up } },
+                      false
+                    )
                   }
-                  onSave={() => handleSaveDraftConfig({})}
+                  onSave={() => handleSaveDraftConfig({}, true)}
                 />
               )}
 
               {activeAdminTab === 'memories' && (
                 <MemoriesTab
                   memories={memories}
-                  onChangeMemories={handleSaveMemories}
-                  onSave={() => handleSaveMemories(memories)}
+                  onChangeMemories={(mems) => handleSaveMemories(mems, false)}
+                  onSave={() => handleSaveMemories(memories, true)}
                 />
               )}
 
@@ -436,19 +506,22 @@ export default function App() {
                 <MusicManagerTab
                   songs={songs}
                   musicSettings={config.musicSettings}
-                  onChangeSongs={handleSaveSongs}
+                  onChangeSongs={(sngs) => handleSaveSongs(sngs, false)}
                   onChangeMusicSettings={(up) =>
-                    handleSaveDraftConfig({ musicSettings: { ...config.musicSettings, ...up } })
+                    handleSaveDraftConfig({ musicSettings: { ...config.musicSettings, ...up } }, false)
                   }
-                  onSave={() => handleSaveDraftConfig({})}
+                  onSave={async () => {
+                    await handleSaveDraftConfig({}, true);
+                    await handleSaveSongs(songs, true);
+                  }}
                 />
               )}
 
               {activeAdminTab === 'balloons' && (
                 <BalloonsTab
                   balloons={config.balloonMessages}
-                  onChangeBalloons={(balloonMessages) => handleSaveDraftConfig({ balloonMessages })}
-                  onSave={() => handleSaveDraftConfig({})}
+                  onChangeBalloons={(balloonMessages) => handleSaveDraftConfig({ balloonMessages }, false)}
+                  onSave={() => handleSaveDraftConfig({}, true)}
                 />
               )}
 
@@ -456,9 +529,9 @@ export default function App() {
                 <PuzzleTab
                   config={config.puzzleConfig}
                   onChange={(up) =>
-                    handleSaveDraftConfig({ puzzleConfig: { ...config.puzzleConfig, ...up } })
+                    handleSaveDraftConfig({ puzzleConfig: { ...config.puzzleConfig, ...up } }, false)
                   }
-                  onSave={() => handleSaveDraftConfig({})}
+                  onSave={() => handleSaveDraftConfig({}, true)}
                 />
               )}
 
@@ -466,11 +539,12 @@ export default function App() {
                 <ScratchCardTab
                   config={config.scratchCardConfig}
                   onChange={(up) =>
-                    handleSaveDraftConfig({
-                      scratchCardConfig: { ...config.scratchCardConfig, ...up },
-                    })
+                    handleSaveDraftConfig(
+                      { scratchCardConfig: { ...config.scratchCardConfig, ...up } },
+                      false
+                    )
                   }
-                  onSave={() => handleSaveDraftConfig({})}
+                  onSave={() => handleSaveDraftConfig({}, true)}
                 />
               )}
 
@@ -478,9 +552,9 @@ export default function App() {
                 <LoveLetterTab
                   config={config.loveLetter}
                   onChange={(up) =>
-                    handleSaveDraftConfig({ loveLetter: { ...config.loveLetter, ...up } })
+                    handleSaveDraftConfig({ loveLetter: { ...config.loveLetter, ...up } }, false)
                   }
-                  onSave={() => handleSaveDraftConfig({})}
+                  onSave={() => handleSaveDraftConfig({}, true)}
                 />
               )}
 
@@ -488,11 +562,12 @@ export default function App() {
                 <FinalCelebrationTab
                   config={config.finalCelebration}
                   onChange={(up) =>
-                    handleSaveDraftConfig({
-                      finalCelebration: { ...config.finalCelebration, ...up },
-                    })
+                    handleSaveDraftConfig(
+                      { finalCelebration: { ...config.finalCelebration, ...up } },
+                      false
+                    )
                   }
-                  onSave={() => handleSaveDraftConfig({})}
+                  onSave={() => handleSaveDraftConfig({}, true)}
                 />
               )}
 
@@ -500,9 +575,9 @@ export default function App() {
                 <ThemeSettingsTab
                   config={config.themeSettings}
                   onChange={(up) =>
-                    handleSaveDraftConfig({ themeSettings: { ...config.themeSettings, ...up } })
+                    handleSaveDraftConfig({ themeSettings: { ...config.themeSettings, ...up } }, false)
                   }
-                  onSave={() => handleSaveDraftConfig({})}
+                  onSave={() => handleSaveDraftConfig({}, true)}
                 />
               )}
 
@@ -527,10 +602,21 @@ export default function App() {
         </div>
       )}
 
+      {/* Global Toast Notification */}
+      {toast.type && (
+        <div className="fixed top-20 right-6 z-50 flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-2xl border backdrop-blur-md transition-all bg-slate-900/95 text-white border-slate-700 animate-in fade-in slide-in-from-top-4">
+          {toast.type === 'loading' && <Loader2 className="w-5 h-5 text-rose-400 animate-spin" />}
+          {toast.type === 'success' && <CheckCircle2 className="w-5 h-5 text-emerald-400" />}
+          {toast.type === 'error' && <AlertCircle className="w-5 h-5 text-rose-400" />}
+          <span className="text-xs font-bold">{toast.message}</span>
+        </div>
+      )}
+
       {/* Admin Authentication Modal */}
       {showAdminLoginModal && (
         <AdminAuthModal
           onAuthenticated={() => {
+            localStorage.setItem('admin_authenticated', 'true');
             setIsAdminAuthenticated(true);
             setShowAdminLoginModal(false);
             setViewMode('admin');

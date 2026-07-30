@@ -4,18 +4,15 @@ import {
   doc,
   getDoc,
   setDoc,
+  deleteDoc,
   collection,
   getDocs,
   onSnapshot,
+  getDocFromServer,
   Firestore,
 } from 'firebase/firestore';
 import {
   getAuth,
-  signInAnonymously,
-  signInWithEmailAndPassword,
-  signOut,
-  onAuthStateChanged,
-  User,
   Auth,
 } from 'firebase/auth';
 import { AppConfig, MemoryPhoto, Song } from '../types';
@@ -50,6 +47,19 @@ try {
 }
 
 export { app, db, auth };
+
+// Connection test on boot
+export async function testConnection() {
+  if (!db) return;
+  try {
+    await getDocFromServer(doc(db, 'appConfig', 'draft'));
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('the client is offline')) {
+      console.error('Please check your Firebase configuration.');
+    }
+  }
+}
+testConnection();
 
 const LOCAL_STORAGE_KEY_DRAFT = 'romantic_surprise_draft_v1';
 const LOCAL_STORAGE_KEY_PUBLISHED = 'romantic_surprise_published_v1';
@@ -112,11 +122,22 @@ export async function fetchAppConfig(isPublished = false): Promise<AppConfig> {
       const snap = await getDoc(configDoc);
       if (snap.exists()) {
         return snap.data() as AppConfig;
-      } else {
-        // Initialize default in Firestore
-        await setDoc(configDoc, INITIAL_DEFAULT_CONFIG);
-        return INITIAL_DEFAULT_CONFIG;
       }
+      
+      // If docId doesn't exist, try alternative docId before defaulting
+      const altDocId = isPublished ? 'draft' : 'published';
+      const altDoc = doc(db, 'appConfig', altDocId);
+      const altSnap = await getDoc(altDoc);
+      if (altSnap.exists()) {
+        const altData = altSnap.data() as AppConfig;
+        await setDoc(configDoc, altData);
+        return altData;
+      }
+
+      // Initialize defaults in Firestore if empty
+      await setDoc(doc(db, 'appConfig', 'draft'), INITIAL_DEFAULT_CONFIG);
+      await setDoc(doc(db, 'appConfig', 'published'), INITIAL_DEFAULT_CONFIG);
+      return INITIAL_DEFAULT_CONFIG;
     } catch (e) {
       console.warn('Firestore fetch config error:', e);
     }
@@ -125,23 +146,27 @@ export async function fetchAppConfig(isPublished = false): Promise<AppConfig> {
 }
 
 export async function saveAppConfig(config: AppConfig, isPublished = false): Promise<void> {
-  const docId = isPublished ? 'published' : 'draft';
   const updatedConfig = { ...config, updatedAt: new Date().toISOString() };
-  setLocalConfig(updatedConfig, isPublished);
+  setLocalConfig(updatedConfig, false);
+  setLocalConfig(updatedConfig, true);
 
   if (db) {
     try {
-      const configDoc = doc(db, 'appConfig', docId);
-      await setDoc(configDoc, updatedConfig, { merge: true });
+      const draftDoc = doc(db, 'appConfig', 'draft');
+      const pubDoc = doc(db, 'appConfig', 'published');
+      await Promise.all([
+        setDoc(draftDoc, updatedConfig, { merge: true }),
+        setDoc(pubDoc, updatedConfig, { merge: true }),
+      ]);
     } catch (e) {
-      console.warn('Firestore save config error:', e);
+      console.error('Firestore save config error:', e);
+      throw e;
     }
   }
 }
 
 export async function publishDraftToLive(draftConfig: AppConfig): Promise<void> {
-  await saveAppConfig(draftConfig, false); // save draft
-  await saveAppConfig(draftConfig, true);  // copy to published
+  await saveAppConfig(draftConfig, true);
 }
 
 export async function fetchMemories(): Promise<MemoryPhoto[]> {
@@ -172,11 +197,28 @@ export async function saveMemories(memories: MemoryPhoto[]): Promise<void> {
   setLocalMemories(memories);
   if (db) {
     try {
-      for (const mem of memories) {
-        await setDoc(doc(db, 'memories', mem.id), mem);
-      }
+      const colRef = collection(db, 'memories');
+      const existingSnap = await getDocs(colRef);
+      const existingIds = new Set<string>();
+      existingSnap.forEach((d) => existingIds.add(d.id));
+
+      const newIds = new Set(memories.map((m) => m.id));
+
+      // Remove deleted memory documents
+      const deletePromises: Promise<void>[] = [];
+      existingIds.forEach((id) => {
+        if (!newIds.has(id)) {
+          deletePromises.push(deleteDoc(doc(db, 'memories', id)));
+        }
+      });
+      await Promise.all(deletePromises);
+
+      // Save updated memory list
+      const setPromises = memories.map((mem) => setDoc(doc(db, 'memories', mem.id), mem));
+      await Promise.all(setPromises);
     } catch (e) {
-      console.warn('Firestore memories save error:', e);
+      console.error('Firestore memories save error:', e);
+      throw e;
     }
   }
 }
@@ -209,11 +251,28 @@ export async function saveSongs(songs: Song[]): Promise<void> {
   setLocalSongs(songs);
   if (db) {
     try {
-      for (const song of songs) {
-        await setDoc(doc(db, 'songs', song.id), song);
-      }
+      const colRef = collection(db, 'songs');
+      const existingSnap = await getDocs(colRef);
+      const existingIds = new Set<string>();
+      existingSnap.forEach((s) => existingIds.add(s.id));
+
+      const newIds = new Set(songs.map((s) => s.id));
+
+      // Remove deleted song documents
+      const deletePromises: Promise<void>[] = [];
+      existingIds.forEach((id) => {
+        if (!newIds.has(id)) {
+          deletePromises.push(deleteDoc(doc(db, 'songs', id)));
+        }
+      });
+      await Promise.all(deletePromises);
+
+      // Save updated song list
+      const setPromises = songs.map((song) => setDoc(doc(db, 'songs', song.id), song));
+      await Promise.all(setPromises);
     } catch (e) {
-      console.warn('Firestore songs save error:', e);
+      console.error('Firestore songs save error:', e);
+      throw e;
     }
   }
 }
@@ -239,3 +298,40 @@ export function subscribeToConfig(
   }
   return () => {};
 }
+
+// Secure Admin Passcode Authentication with SHA-256 and Firestore
+async function hashPasscode(passcode: string): Promise<string> {
+  const msgBuffer = new TextEncoder().encode(passcode);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+export async function verifyAdminPasscode(enteredPasscode: string): Promise<boolean> {
+  const enteredHash = await hashPasscode(enteredPasscode);
+
+  if (db) {
+    try {
+      const passDocRef = doc(db, 'adminAuth', 'passcode');
+      const snap = await getDoc(passDocRef);
+      if (snap.exists()) {
+        const storedHash = snap.data().hash;
+        return enteredHash === storedHash;
+      } else {
+        // Seed default passcode hash to Firestore
+        const defaultHash = await hashPasscode('9875');
+        await setDoc(passDocRef, {
+          hash: defaultHash,
+          updatedAt: new Date().toISOString(),
+        });
+        return enteredHash === defaultHash;
+      }
+    } catch (e) {
+      console.warn('Firestore passcode verification error, falling back to secure hash check:', e);
+    }
+  }
+
+  const defaultHash = await hashPasscode('9875');
+  return enteredHash === defaultHash;
+}
+
