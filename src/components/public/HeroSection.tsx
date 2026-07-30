@@ -9,7 +9,7 @@ interface HeroSectionProps {
   onNextStep?: () => void;
 }
 
-// CUTE ANIMATED KITTEN COMPONENT
+// CUTE ANIMATED KITTEN COMPONENT. 
 const CuteKitten: React.FC = () => {
   return (
     <div className="absolute -top-16 sm:-top-20 left-1/2 -translate-x-1/2 z-30 pointer-events-none flex flex-col items-center">
