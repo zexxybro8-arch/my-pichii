@@ -5,9 +5,9 @@ interface ParticleOverlayProps {
 }
 
 export const ParticleOverlay: React.FC<ParticleOverlayProps> = ({ effectType }) => {
-  if (effectType === 'none') return null;
-
   const particles = useMemo(() => {
+    if (effectType === 'none') return [];
+
     const symbols = {
       'falling-hearts': ['❤️', '💖', '💕', '💗', '🌸'],
       'floating-stars': ['✨', '⭐', '🌟', '💫', '✦'],
@@ -27,6 +27,8 @@ export const ParticleOverlay: React.FC<ParticleOverlayProps> = ({ effectType }) 
       rotate: Math.random() * 360,
     }));
   }, [effectType]);
+
+  if (effectType === 'none') return null;
 
   return (
     <div className="fixed inset-0 pointer-events-none overflow-hidden z-10">

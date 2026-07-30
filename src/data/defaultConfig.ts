@@ -3,8 +3,8 @@ import { AppConfig, MemoryPhoto, Song } from '../types';
 export const INITIAL_DEFAULT_CONFIG: AppConfig = {
   girlfriendName: 'Picchi',
   boyfriendName: 'Your Love',
-  relationshipStartDate: '2022-02-14',
-  anniversaryDate: '2026-02-14',
+  relationshipStartDate: '2025-03-21T11:20:43',
+  anniversaryDate: '2027-03-21',
   footerText: 'Made with endless love, forever and always ❤️',
   welcomePopup: {
     girlfriendName: 'PICCHI',
@@ -23,8 +23,8 @@ export const INITIAL_DEFAULT_CONFIG: AppConfig = {
     unlockedMessage: 'You remembered our special date! Here is your journey of love.',
   },
   anniversarySettings: {
-    relationshipStartDate: '2022-02-14',
-    anniversaryDate: '2026-02-14',
+    relationshipStartDate: '2025-03-21T11:20:43',
+    anniversaryDate: '2027-03-21',
     milestoneMessage: 'Every single day with you is a gift I treasure forever.',
     displayStyle: 'cards',
   },
