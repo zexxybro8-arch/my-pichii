@@ -1,5 +1,5 @@
 import React from 'react';
-import { Save, Gift, Sparkles, Music, CheckCircle2 } from 'lucide-react';
+import { Save, Gift, Sparkles, Image as ImageIcon, CheckCircle2 } from 'lucide-react';
 import { WelcomePopupConfig } from '../../types';
 
 interface WelcomePopupTabProps {
@@ -14,6 +14,7 @@ export const WelcomePopupTab: React.FC<WelcomePopupTabProps> = ({ config, onChan
     { id: 'slide-up', label: 'Slide Up' },
     { id: 'bounce-in', label: 'Bounce' },
     { id: 'heart-pulse', label: 'Heart Pulse' },
+    { id: 'float-3d', label: '3D Floating' },
   ];
 
   return (
@@ -22,19 +23,19 @@ export const WelcomePopupTab: React.FC<WelcomePopupTabProps> = ({ config, onChan
       <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
         <div>
           <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <Gift className="w-5 h-5 text-pink-500" />
-            <span>Welcome Popup Editor</span>
+            <Gift className="w-5 h-5 text-rose-500" />
+            <span>Welcome Page & Gift Box Editor</span>
           </h2>
           <p className="text-xs text-slate-400">
-            Customize the romantic greeting modal that appears when visitors first open the experience.
+            Edit titles, subtitles, intro descriptions, gift images, button text, and background styles.
           </p>
         </div>
         <button
           onClick={onSave}
-          className="px-4 py-2 bg-pink-600 hover:bg-pink-700 text-white font-semibold text-xs rounded-lg shadow-md transition flex items-center gap-1.5"
+          className="px-4 py-2 bg-gradient-to-r from-rose-500 to-amber-500 hover:from-rose-600 hover:to-amber-600 text-white font-semibold text-xs rounded-xl shadow-md transition flex items-center gap-1.5"
         >
           <Save className="w-4 h-4" />
-          <span>Save Changes</span>
+          <span>Save Welcome Settings</span>
         </button>
       </div>
 
@@ -46,53 +47,83 @@ export const WelcomePopupTab: React.FC<WelcomePopupTabProps> = ({ config, onChan
           <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/60 dark:border-slate-700">
             <div>
               <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
-                Enable Welcome Popup
+                Enable Welcome Gift Page
               </h4>
-              <p className="text-xs text-slate-500">Display modal on initial website entry</p>
+              <p className="text-xs text-slate-500">Display gift modal on initial website entry</p>
             </div>
             <input
               type="checkbox"
               checked={config.showPopup}
               onChange={(e) => onChange({ showPopup: e.target.checked })}
-              className="w-5 h-5 accent-pink-500 rounded cursor-pointer"
+              className="w-5 h-5 accent-rose-500 rounded cursor-pointer"
             />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
+                Girlfriend Name
+              </label>
+              <input
+                type="text"
+                value={config.girlfriendName}
+                onChange={(e) => onChange({ girlfriendName: e.target.value })}
+                className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none transition-all text-slate-900 dark:text-white text-sm"
+                placeholder="PICCHI"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
+                Page Title
+              </label>
+              <input
+                type="text"
+                value={config.title}
+                onChange={(e) => onChange({ title: e.target.value })}
+                className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none text-slate-900 dark:text-white text-sm"
+                placeholder="❤️ Hey PICCHI ❤️"
+              />
+            </div>
           </div>
 
           <div>
             <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
-              Girlfriend Name
+              Subtitle
             </label>
             <input
               type="text"
-              value={config.girlfriendName}
-              onChange={(e) => onChange({ girlfriendName: e.target.value })}
-              className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-pink-500 outline-none transition-all text-slate-900 dark:text-white text-sm"
-              placeholder="PICCHI"
+              value={config.subtitle || ''}
+              onChange={(e) => onChange({ subtitle: e.target.value })}
+              className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none text-slate-900 dark:text-white text-sm"
+              placeholder="A special romantic surprise made just for you"
             />
           </div>
 
           <div>
             <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
-              Popup Title
+              Gift Image / Icon URL
             </label>
-            <input
-              type="text"
-              value={config.title}
-              onChange={(e) => onChange({ title: e.target.value })}
-              className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-pink-500 outline-none text-slate-900 dark:text-white text-sm"
-              placeholder="Hey PICCHI ❤️"
-            />
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={config.giftBoxImage || ''}
+                onChange={(e) => onChange({ giftBoxImage: e.target.value })}
+                placeholder="https://images.unsplash.com/photo-..."
+                className="flex-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none text-slate-900 dark:text-white text-sm"
+              />
+            </div>
           </div>
 
           <div>
             <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
-              Popup Message
+              Intro Message
             </label>
             <textarea
               rows={4}
               value={config.message}
               onChange={(e) => onChange({ message: e.target.value })}
-              className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-pink-500 outline-none text-slate-900 dark:text-white text-sm leading-relaxed resize-none"
+              className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none text-slate-900 dark:text-white text-sm leading-relaxed resize-none"
               placeholder={`I made something very special just for you...\n\nClose your eyes...\nTake a deep breath...\n\nNow press Continue ❤️`}
             />
           </div>
@@ -131,9 +162,9 @@ export const WelcomePopupTab: React.FC<WelcomePopupTabProps> = ({ config, onChan
 
           <div>
             <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
-              Popup Animation
+              Animation Style
             </label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {animOptions.map((opt) => {
                 const isSel = config.animation === opt.id;
                 return (
@@ -143,7 +174,7 @@ export const WelcomePopupTab: React.FC<WelcomePopupTabProps> = ({ config, onChan
                     onClick={() => onChange({ animation: opt.id })}
                     className={`py-2 px-3 border rounded-lg text-xs font-semibold transition-colors ${
                       isSel
-                        ? 'bg-pink-500/10 text-pink-500 border-pink-400 dark:border-pink-500'
+                        ? 'bg-rose-500/10 text-rose-500 border-rose-400 dark:border-rose-500'
                         : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50'
                     }`}
                   >
@@ -159,7 +190,7 @@ export const WelcomePopupTab: React.FC<WelcomePopupTabProps> = ({ config, onChan
         <div className="bg-slate-200 dark:bg-slate-900/80 p-6 sm:p-8 rounded-3xl border border-slate-300 dark:border-slate-800 flex flex-col items-center">
           <div className="flex items-center justify-between w-full mb-4">
             <h3 className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">
-              Live Phone Preview
+              Live Device Preview
             </h3>
             <div className="flex space-x-1.5">
               <div className="w-2.5 h-2.5 rounded-full bg-slate-400" />
@@ -172,39 +203,39 @@ export const WelcomePopupTab: React.FC<WelcomePopupTabProps> = ({ config, onChan
           <div className="w-full max-w-[340px] h-[580px] bg-[#050505] rounded-[40px] border-[8px] border-slate-800 shadow-2xl relative overflow-hidden flex flex-col items-center justify-center p-6 my-auto">
             {/* Ambient Background Glows */}
             <div className="absolute top-0 left-0 w-full h-full opacity-30 pointer-events-none">
-              <div className="absolute top-10 left-10 w-28 h-28 bg-pink-500 rounded-full blur-[60px]" />
-              <div className="absolute bottom-20 right-10 w-36 h-36 bg-purple-500 rounded-full blur-[80px]" />
+              <div className="absolute top-10 left-10 w-28 h-28 bg-rose-500 rounded-full blur-[60px]" />
+              <div className="absolute bottom-20 right-10 w-36 h-36 bg-amber-500 rounded-full blur-[80px]" />
             </div>
 
             {/* Popup Card */}
-            <div className="bg-white/10 backdrop-blur-xl border border-white/20 p-6 sm:p-8 rounded-3xl w-full text-center shadow-2xl relative z-10">
-              <div className="w-12 h-12 bg-pink-500 rounded-full mx-auto mb-4 flex items-center justify-center text-xl text-white shadow-md">
-                ❤️
-              </div>
-              <h4 className="text-white font-serif text-xl font-bold mb-3">
+            <div className="bg-white/10 backdrop-blur-xl border border-white/20 p-6 rounded-3xl w-full text-center shadow-2xl relative z-10">
+              {config.giftBoxImage ? (
+                <img
+                  src={config.giftBoxImage}
+                  alt="Gift"
+                  className="w-16 h-16 rounded-2xl mx-auto mb-3 object-cover shadow-lg border border-white/30"
+                />
+              ) : (
+                <div className="w-12 h-12 bg-gradient-to-tr from-rose-500 to-amber-400 rounded-2xl mx-auto mb-4 flex items-center justify-center text-xl text-white shadow-md">
+                  🎁
+                </div>
+              )}
+              <h4 className="text-white font-serif text-lg font-bold mb-1">
                 {config.title || `Hey ${config.girlfriendName} ❤️`}
               </h4>
-              <p className="text-white/80 text-xs leading-relaxed mb-6 whitespace-pre-line font-medium">
+              {config.subtitle && (
+                <p className="text-rose-200/90 text-[11px] mb-3 font-medium">{config.subtitle}</p>
+              )}
+              <p className="text-white/80 text-xs leading-relaxed mb-5 whitespace-pre-line font-medium">
                 {config.message}
               </p>
-              <button className="w-full bg-pink-500 hover:bg-pink-600 text-white font-semibold py-2.5 rounded-xl transition-all shadow-lg text-xs">
+              <button className="w-full bg-gradient-to-r from-rose-500 to-amber-500 hover:from-rose-600 hover:to-amber-600 text-white font-semibold py-2.5 rounded-xl transition-all shadow-lg text-xs">
                 {config.buttonText || 'Continue ❤️'}
               </button>
             </div>
 
             {/* Bottom Phone Bar */}
             <div className="absolute bottom-4 w-1/3 h-1 bg-white/20 rounded-full" />
-          </div>
-
-          <div className="mt-4 flex items-center space-x-4 text-[11px] text-slate-500 dark:text-slate-400 justify-center">
-            <div className="flex items-center space-x-1">
-              <Music className="w-3.5 h-3.5 text-pink-500" />
-              <span>Background Music Enabled</span>
-            </div>
-            <div className="flex items-center space-x-1">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-              <span>Auto-start Configured</span>
-            </div>
           </div>
         </div>
       </div>

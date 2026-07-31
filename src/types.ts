@@ -1,20 +1,43 @@
-export interface Song {
-  id: string;
+export interface WelcomePopupConfig {
+  showPopup: boolean;
+  girlfriendName: string;
   title: string;
-  url: string; // Firebase Storage download URL or audio link
-  duration?: number;
-  fileName?: string;
-  order: number;
-  isDefault?: boolean;
+  subtitle?: string;
+  message: string;
+  giftBoxImage?: string;
+  buttonText: string;
+  backgroundStyle: 'romantic-gradient' | 'starry-night' | 'rose-petals' | 'sunset-glow' | 'deep-velvet';
+  animation: 'fade-scale' | 'bounce-in' | 'slide-up' | 'heart-pulse' | 'float-3d';
 }
 
-export interface MemoryPhoto {
-  id: string;
-  image: string; // Data URL or image link
-  caption: string;
-  category?: string;
-  order: number;
-  date?: string;
+export interface SecretPinConfig {
+  enabled: boolean;
+  pinCode: string;
+  pin?: string;
+  hint: string;
+  title?: string;
+  subtitle?: string;
+  unlockedTitle?: string;
+  unlockedMessage?: string;
+  maxAttempts?: number;
+  lockoutTimeMinutes?: number;
+}
+
+export interface AnniversaryConfig {
+  title?: string;
+  subtitle?: string;
+  relationshipStartDate: string; // ISO string '2025-03-21T11:20:00'
+  anniversaryDate?: string;
+  customLabelYears?: string;
+  customLabelMonths?: string;
+  customLabelDays?: string;
+  customLabelHours?: string;
+  customLabelMinutes?: string;
+  customLabelSeconds?: string;
+  showLiveTimer?: boolean;
+  timerUpdateIntervalSeconds?: number;
+  milestoneMessage?: string;
+  displayStyle?: string;
 }
 
 export interface BalloonMessage {
@@ -24,72 +47,116 @@ export interface BalloonMessage {
   order: number;
 }
 
-export interface WelcomePopupConfig {
-  girlfriendName: string;
+export interface BalloonSectionConfig {
+  balloonSize?: 'sm' | 'md' | 'lg';
+  balloonSpeed?: 'slow' | 'normal' | 'fast';
+  floatingStyle?: 'linear' | 'wobbly' | 'spiral';
+  enablePopSound?: boolean;
+  successAnimation?: 'confetti' | 'sparkles' | 'fireworks' | 'hearts';
+}
+
+export interface MemoryPhoto {
+  id: string;
+  image: string; // Base64 or URL
+  caption: string;
+  date?: string;
+  order: number;
+  category?: string;
+}
+
+export interface MemoryGalleryConfig {
+  layoutStyle?: 'polaroid' | 'grid' | 'masonry' | 'carousel';
+  cardStyle?: 'glass' | 'paper' | 'shadow' | 'border';
+  albumCoverImage?: string;
+  albumCover?: string;
+}
+
+export interface Song {
+  id: string;
   title: string;
-  message: string;
-  buttonText: string;
-  backgroundStyle: 'romantic-gradient' | 'starry-night' | 'rose-petals' | 'sunset-glow' | 'deep-velvet';
-  animation: 'fade-scale' | 'bounce-in' | 'slide-up' | 'heart-pulse';
-  showPopup: boolean;
-}
-
-export interface SecretPinConfig {
-  enabled: boolean;
-  pin: string; // 4-digit numeric string
-  hint: string;
-  unlockedTitle: string;
-  unlockedMessage: string;
-}
-
-export interface AnniversaryConfig {
-  relationshipStartDate: string; // YYYY-MM-DD
-  anniversaryDate: string; // YYYY-MM-DD
-  milestoneMessage: string;
-  displayStyle: 'detailed' | 'cards' | 'minimal';
+  url: string;
+  fileName?: string;
+  duration?: number;
+  order: number;
+  isDefault: boolean;
 }
 
 export interface PuzzleConfig {
   imageUrl: string;
-  gridSize: number; // 3 for 3x3, 4 for 4x4
+  gridSize: number; // 3 for 3x3, 4 for 4x4, 5 for 5x5
   completionMessage: string;
   rewardTitle: string;
+  solveButtonText?: string;
+  enableSolveForMe?: boolean;
+  enableShuffleButton?: boolean;
+  enableSounds?: boolean;
+}
+
+export interface ScratchRewardCard {
+  id: string;
+  title: string;
+  subtitle: string;
+  icon: string;
+  color: string;
 }
 
 export interface ScratchCardConfig {
-  hiddenMessage: string;
+  hiddenMessage: string; // Secret coupon prize
   voucherTitle: string;
-  overlayText: string;
-  overlayColor: string;
-  revealPercentage: number;
+  voucherDescription?: string;
+  voucherImage?: string;
+  overlayText: string; // e.g. 'Scratch here for your surprise!'
+  overlayColor?: string; // Foil gold color hex
+  revealPercentage?: number; // threshold to reveal, e.g. 40%
+  rewardCards?: ScratchRewardCard[];
+  successAnimation?: string;
+  enableSounds?: boolean;
 }
 
 export interface LoveLetterConfig {
   title: string;
-  content: string; // HTML or Markdown formatted content
-  fontStyle: 'playfair' | 'handwriting' | 'serif' | 'modern';
-  paperTexture: 'vintage' | 'parchment' | 'rose' | 'clean';
+  content: string;
   authorSignature: string;
+  fontStyle: 'playfair' | 'handwriting' | 'serif' | 'modern' | 'caveat';
+  paperTexture?: 'parchment' | 'vintage' | 'rose' | 'clean';
+  paperStyle?: 'parchment' | 'vintage' | 'rose' | 'clean';
+  envelopeColor?: string;
+  waxSeal?: 'rose' | 'heart' | 'crown' | 'love';
+  typingSpeed?: 'slow' | 'medium' | 'fast' | 'instant';
+  openAnimation?: 'unfold' | 'slide' | 'fade';
+  backgroundMusic?: string;
+  enableReplayAnimation?: boolean;
 }
 
 export interface FinalCelebrationConfig {
   title: string;
   subtitle: string;
   message: string;
+  buttonText: string;
+  quotes?: string[];
+  counterTitle?: string;
+  endingMessage?: string;
   enableConfetti: boolean;
   enableFireworks: boolean;
+  enableHeartRain?: boolean;
   enableSoundEffects: boolean;
-  buttonText: string;
 }
 
 export interface ThemeSettingsConfig {
   primaryColor: string;
+  secondaryColor?: string;
   accentColor: string;
   backgroundColor: string;
-  fontFamily: 'playfair' | 'inter' | 'dancing' | 'lora';
-  particleEffect: 'falling-hearts' | 'floating-stars' | 'rose-petals' | 'sparkles' | 'none';
-  backgroundWallpaper: string;
+  backgroundGradient?: string;
+  backgroundWallpaper?: string;
+  fontFamily: 'playfair' | 'jakarta' | 'inter' | 'dancing' | 'lora' | 'caveat';
+  borderRadius?: 'none' | 'lg' | '2xl' | '3xl' | 'full';
+  shadowIntensity?: 'none' | 'soft' | 'medium' | 'deep' | 'glow';
+  glassmorphism?: boolean;
+  glassmorphismIntensity?: number; // 0 to 100
+  enableAnimations: boolean;
   darkMode: boolean;
+  particleEffect: 'falling-hearts' | 'rose-petals' | 'floating-stars' | 'sparkles' | 'butterflies' | 'sakura' | 'none';
 }
 
 export interface MusicSettingsConfig {
@@ -102,6 +169,30 @@ export interface MusicSettingsConfig {
   defaultSongId: string;
 }
 
+export interface AnimationEditorConfig {
+  animationSpeed?: number; // 0.5 to 2
+  enableFloatingHearts?: boolean;
+  enableButterflies?: boolean;
+  enableSparkles?: boolean;
+  enableSakuraPetals?: boolean;
+  enableParallax?: boolean;
+  enable3DEffects?: boolean;
+  enableCardHoverEffects?: boolean;
+}
+
+export interface SiteSettingsConfig {
+  timeZone?: string;
+  dateFormat?: string;
+}
+
+export interface AssetItem {
+  id: string;
+  name: string;
+  url: string;
+  type: 'image' | 'video' | 'gif' | 'icon' | 'audio';
+  createdAt: string;
+}
+
 export interface AppConfig {
   girlfriendName: string;
   boyfriendName: string;
@@ -112,29 +203,39 @@ export interface AppConfig {
   secretPin: SecretPinConfig;
   anniversarySettings: AnniversaryConfig;
   balloonMessages: BalloonMessage[];
+  balloonSectionConfig?: BalloonSectionConfig;
   puzzleConfig: PuzzleConfig;
   scratchCardConfig: ScratchCardConfig;
   loveLetter: LoveLetterConfig;
+  memoryGalleryConfig?: MemoryGalleryConfig;
   finalCelebration: FinalCelebrationConfig;
   themeSettings: ThemeSettingsConfig;
   musicSettings: MusicSettingsConfig;
+  animationConfig?: AnimationEditorConfig;
+  animationEditorConfig?: AnimationEditorConfig;
+  siteSettingsConfig?: SiteSettingsConfig;
+  assets?: AssetItem[];
+  assetsLibrary?: AssetItem[];
   updatedAt: string;
 }
 
 export type AdminTab =
   | 'dashboard'
-  | 'couple'
-  | 'popup'
-  | 'pin'
-  | 'anniversary'
-  | 'memories'
-  | 'music'
+  | 'theme'
+  | 'welcome'
   | 'balloons'
   | 'puzzle'
   | 'scratch'
   | 'letter'
+  | 'memories'
+  | 'music'
   | 'celebration'
-  | 'theme'
+  | 'assets'
+  | 'animations'
+  | 'settings'
+  | 'couple'
+  | 'pin'
+  | 'anniversary'
   | 'preview'
   | 'publish';
 
@@ -167,5 +268,5 @@ export const JOURNEY_STEPS: JourneyStepMeta[] = [
   { id: 'puzzle', stepNumber: 7, title: 'Love Puzzle', icon: '🧩' },
   { id: 'scratch', stepNumber: 8, title: 'Scratch Card', icon: '🎁' },
   { id: 'letter', stepNumber: 9, title: 'Love Letter', icon: '💌' },
-  { id: 'celebration', stepNumber: 10, title: 'Final Surprise', icon: '🎆' },
+  { id: 'celebration', stepNumber: 10, title: 'Celebration', icon: '🎉' },
 ];

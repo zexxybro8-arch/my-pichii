@@ -65,9 +65,16 @@ export const WelcomePopup: React.FC<WelcomePopupProps> = ({ config, onContinue }
           </div>
         </div>
 
-        <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight mb-4 drop-shadow-md">
-          {config.title || `❤️ Hey ${config.girlfriendName} ❤️`}
-        </h2>
+        <div className="flex flex-col items-center justify-center mb-6">
+          <h2 className="font-cute text-[40px] sm:text-6xl font-extrabold tracking-wide relative z-30 text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-rose-500 to-amber-300 leading-tight text-center flex items-center justify-center gap-2 flex-wrap drop-shadow-[0_6px_25px_rgba(255,94,126,0.45)]">
+            <span>❤️</span>
+            <span>Hey</span>
+            <span className="bg-clip-text text-transparent bg-gradient-to-r from-pink-400 via-rose-500 to-amber-300">
+              {config.girlfriendName || 'Picchi'}
+            </span>
+            <span className="text-pink-500 inline-block animate-bounce">❤️</span>
+          </h2>
+        </div>
 
         <div className="text-base sm:text-lg font-medium whitespace-pre-line leading-relaxed mb-8 opacity-95">
           {config.message}

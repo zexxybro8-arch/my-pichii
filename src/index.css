@@ -1,4 +1,13 @@
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Pacifico&family=Caveat:wght@700&display=swap');
 @import "tailwindcss";
+
+.font-cute {
+  font-family: 'Fredoka', 'Caveat', cursive, sans-serif;
+}
+
+.font-pacifico {
+  font-family: 'Pacifico', 'Caveat', cursive;
+}
 
 @keyframes fall {
   0% {

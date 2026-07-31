@@ -26,8 +26,6 @@ import {
 import { WelcomeGiftBoxPage } from './components/public/WelcomeGiftBoxPage';
 import { SecretPinPage } from './components/public/SecretPinPage';
 import { CurtainRevealPage } from './components/public/CurtainRevealPage';
-import { WelcomePopup } from './components/public/WelcomePopup';
-import { PinLockModal } from './components/public/PinLockModal';
 import { PublicNavbar } from './components/public/PublicNavbar';
 import { HeroSection } from './components/public/HeroSection';
 import { BalloonsSection } from './components/public/BalloonsSection';
@@ -58,10 +56,13 @@ import { ScratchCardTab } from './components/admin/ScratchCardTab';
 import { LoveLetterTab } from './components/admin/LoveLetterTab';
 import { FinalCelebrationTab } from './components/admin/FinalCelebrationTab';
 import { ThemeSettingsTab } from './components/admin/ThemeSettingsTab';
+import { AssetsManagerTab } from './components/admin/AssetsManagerTab';
+import { AnimationEditorTab } from './components/admin/AnimationEditorTab';
+import { SettingsTab } from './components/admin/SettingsTab';
 import { LivePreviewTab } from './components/admin/LivePreviewTab';
 import { PublishTab } from './components/admin/PublishTab';
 
-import { Menu, ArrowLeft, Globe, Lock, CheckCircle2, AlertCircle, Loader2, LogOut } from 'lucide-react';
+import { Menu, Globe, CheckCircle2, AlertCircle, Loader2, LogOut } from 'lucide-react';
 
 export default function App() {
   const [viewMode, setViewMode] = useState<'public' | 'admin'>('public');
@@ -102,9 +103,7 @@ export default function App() {
   const [isPublishedSynced, setIsPublishedSynced] = useState<boolean>(true);
 
   // Experience state
-  const [welcomePopupDismissed, setWelcomePopupDismissed] = useState<boolean>(false);
   const [musicAutoStartSignal, setMusicAutoStartSignal] = useState<boolean>(false);
-  const [pinUnlocked, setPinUnlocked] = useState<boolean>(false);
 
   // Multi-step Journey Navigation State
   const [currentStep, setCurrentStep] = useState<JourneyStep>('welcome');
@@ -132,12 +131,10 @@ export default function App() {
       setMemories(loadedMemories);
       setSongs(loadedSongs);
 
-      // Check sync status
       setIsPublishedSynced(JSON.stringify(draftConfig) === JSON.stringify(liveConfig));
     }
     loadData();
 
-    // Subscribe to real-time changes
     const unsubPublished = subscribeToConfig(true, (newPub) => {
       setPublishedConfig(newPub);
     });
@@ -216,11 +213,6 @@ export default function App() {
       console.error('Publish failed:', err);
       showToast('error', `Publish failed: ${err?.message || 'Firestore connection issue'}`);
     }
-  };
-
-  const handleContinueWelcomePopup = () => {
-    setWelcomePopupDismissed(true);
-    setMusicAutoStartSignal(true);
   };
 
   const activeConfig = viewMode === 'public' ? publishedConfig : config;
@@ -350,6 +342,7 @@ export default function App() {
                   <FinalCelebrationSection
                     config={activeConfig.finalCelebration}
                     girlfriendName={activeConfig.girlfriendName}
+                    relationshipStartDate={activeConfig.relationshipStartDate}
                     onRestart={() => handleAdvanceStep('welcome')}
                   />
                 )}
@@ -361,7 +354,7 @@ export default function App() {
         </div>
       )}
 
-      {/* VIEW MODE: ADMIN PANEL CMS */}
+      {/* VIEW MODE: ADMIN PANEL WEBSITE CMS */}
       {viewMode === 'admin' && isAdminAuthenticated && (
         <div className="flex h-screen overflow-hidden bg-slate-950 text-slate-100">
           {/* Sidebar Desktop */}
@@ -405,7 +398,7 @@ export default function App() {
                   <Menu className="w-5 h-5" />
                 </button>
                 <div className="flex items-center space-x-2">
-                  <h1 className="text-base font-bold text-white capitalize">{activeAdminTab} Editor</h1>
+                  <h1 className="text-base font-bold text-white capitalize">{activeAdminTab} CMS Editor</h1>
                   <span
                     className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wide border ${
                       isPublishedSynced
@@ -497,7 +490,14 @@ export default function App() {
               {activeAdminTab === 'memories' && (
                 <MemoriesTab
                   memories={memories}
+                  config={config.memoryGalleryConfig}
                   onChangeMemories={(mems) => handleSaveMemories(mems, false)}
+                  onChangeConfig={(up) =>
+                    handleSaveDraftConfig(
+                      { memoryGalleryConfig: { ...config.memoryGalleryConfig, ...up } },
+                      false
+                    )
+                  }
                   onSave={() => handleSaveMemories(memories, true)}
                 />
               )}
@@ -520,7 +520,14 @@ export default function App() {
               {activeAdminTab === 'balloons' && (
                 <BalloonsTab
                   balloons={config.balloonMessages}
+                  config={config.balloonSectionConfig}
                   onChangeBalloons={(balloonMessages) => handleSaveDraftConfig({ balloonMessages }, false)}
+                  onChangeConfig={(up) =>
+                    handleSaveDraftConfig(
+                      { balloonSectionConfig: { ...config.balloonSectionConfig, ...up } },
+                      false
+                    )
+                  }
                   onSave={() => handleSaveDraftConfig({}, true)}
                 />
               )}
@@ -577,6 +584,34 @@ export default function App() {
                   onChange={(up) =>
                     handleSaveDraftConfig({ themeSettings: { ...config.themeSettings, ...up } }, false)
                   }
+                  onSave={() => handleSaveDraftConfig({}, true)}
+                />
+              )}
+
+              {activeAdminTab === 'assets' && (
+                <AssetsManagerTab
+                  assets={config.assets}
+                  onChange={(up) =>
+                    handleSaveDraftConfig({ assets: { ...config.assets, ...up } }, false)
+                  }
+                  onSave={() => handleSaveDraftConfig({}, true)}
+                />
+              )}
+
+              {activeAdminTab === 'animation' && (
+                <AnimationEditorTab
+                  animation={config.animationConfig}
+                  onChange={(up) =>
+                    handleSaveDraftConfig({ animationConfig: { ...config.animationConfig, ...up } }, false)
+                  }
+                  onSave={() => handleSaveDraftConfig({}, true)}
+                />
+              )}
+
+              {activeAdminTab === 'settings' && (
+                <SettingsTab
+                  config={config}
+                  onUpdateConfig={(up) => handleSaveDraftConfig(up, false)}
                   onSave={() => handleSaveDraftConfig({}, true)}
                 />
               )}

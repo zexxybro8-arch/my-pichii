@@ -88,18 +88,6 @@ export const SecretPinPage: React.FC<SecretPinPageProps> = ({
       {/* Glow Effects */}
       <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-80 h-80 bg-rose-500/10 dark:bg-rose-500/15 rounded-full blur-3xl pointer-events-none" />
 
-      {/* Badge */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-rose-200 dark:border-rose-900/60 shadow-lg mb-6"
-      >
-        <Sparkles className="w-4 h-4 text-pink-500 animate-spin" />
-        <span className="text-xs font-extrabold uppercase tracking-widest text-rose-600 dark:text-rose-400">
-          Step 2: Secret PIN Lock
-        </span>
-      </motion.div>
-
       {/* Main Container */}
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}

@@ -64,8 +64,7 @@ export const PublicNavbar: React.FC<PublicNavbarProps> = ({
           <div className="flex flex-col items-center">
             <div className="flex items-center gap-1.5 bg-gradient-to-r from-rose-50 to-pink-50 dark:from-rose-950/60 dark:to-pink-950/60 border border-rose-300/80 dark:border-pink-500/30 px-3.5 py-1 rounded-full text-xs font-black text-rose-600 dark:text-pink-300 shadow-sm">
               <span className="text-sm">{currentMeta.icon}</span>
-              <span className="hidden sm:inline">Step {currentMeta.stepNumber}/10:</span>
-              <span className="truncate max-w-[110px] sm:max-w-none">{currentMeta.title}</span>
+              <span className="truncate max-w-[140px] sm:max-w-none">{currentMeta.title}</span>
             </div>
 
             {/* Dots */}

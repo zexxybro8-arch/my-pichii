@@ -470,11 +470,18 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ config, onNextStep }) 
             {/* Glow background inside card */}
             <div className="absolute inset-0 bg-gradient-to-r from-rose-500/10 via-amber-500/10 to-rose-500/10 pointer-events-none" />
             
-            <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-rose-200 to-amber-200 drop-shadow-[0_2px_18px_rgba(244,114,182,0.45)] mb-3 flex items-center justify-center gap-3 font-serif">
-              <span>💖</span>
-              <span>Our Beautiful Journey</span>
-              <span>💖</span>
+            <h1 className="font-cute text-[48px] sm:text-7xl font-extrabold tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-rose-500 to-amber-300 mb-5 relative z-30 leading-tight text-center flex items-center justify-center gap-3 flex-wrap drop-shadow-[0_6px_25px_rgba(255,94,126,0.45)]">
+              <span>Hey</span>
+              <span className="bg-clip-text text-transparent bg-gradient-to-r from-pink-400 via-rose-500 to-amber-300 hover:scale-105 transition-transform inline-block">
+                {config.girlfriendName || 'Picchi'}
+              </span>
+              <span className="text-pink-500 inline-block animate-bounce">❤️</span>
+              <span className="text-pink-400 inline-block text-2xl sm:text-4xl animate-pulse">✨</span>
             </h1>
+
+            <p className="text-base sm:text-xl text-rose-200 font-bold max-w-md mx-auto mb-6 leading-relaxed relative z-20 font-serif italic">
+              Welcome to Our Beautiful Journey of Love & Cute Memories 💕
+            </p>
 
             <div className="flex items-center justify-center gap-2 text-rose-300/90 font-bold text-xs sm:text-sm tracking-widest uppercase mb-3">
               <span>💕</span>

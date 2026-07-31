@@ -28,8 +28,16 @@ interface MusicManagerTabProps {
 }
 
 export const MusicManagerTab: React.FC<MusicManagerTabProps> = ({
-  songs,
-  musicSettings,
+  songs = [],
+  musicSettings = {
+    autoplay: true,
+    loop: true,
+    shuffle: false,
+    defaultVolume: 0.7,
+    fadeInDuration: 2,
+    fadeOutDuration: 2,
+    defaultSongId: '',
+  },
   onChangeSongs,
   onChangeMusicSettings,
   onSave,
@@ -55,7 +63,6 @@ export const MusicManagerTab: React.FC<MusicManagerTabProps> = ({
     }
     setNewFileName(file.name);
 
-    // Read metadata duration
     try {
       const tempAudio = new Audio(URL.createObjectURL(file));
       tempAudio.onloadedmetadata = () => {
@@ -157,69 +164,70 @@ export const MusicManagerTab: React.FC<MusicManagerTabProps> = ({
   };
 
   return (
-    <div className="max-w-4xl space-y-6">
-      <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
+    <div className="max-w-4xl mx-auto space-y-8">
+      {/* Header */}
+      <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <Music className="w-5 h-5 text-rose-500" />
-            <span>Background Music Manager</span>
+          <h2 className="text-xl font-bold text-white flex items-center gap-2">
+            <Music className="w-6 h-6 text-rose-400" />
+            <span>Music Player & Audio Playlist CMS</span>
           </h2>
-          <p className="text-xs text-slate-500">
-            Upload MP3 songs, edit playlists, set autoplay/volume preferences, and choose default tracks.
+          <p className="text-xs text-slate-400 mt-1">
+            Upload custom MP3 romantic background music, edit playlist order, volume, autoplay, and audio widget styles.
           </p>
         </div>
+
         <button
           onClick={onSave}
-          className="px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs rounded-xl shadow-md transition flex items-center gap-1.5"
+          className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-rose-500 to-amber-500 hover:from-rose-600 hover:to-amber-600 text-white font-semibold text-xs shadow-lg shadow-rose-950/30 transition self-start sm:self-auto"
         >
-          <Save className="w-4 h-4" />
-          <span>Save Changes</span>
+          Save Music Settings
         </button>
       </div>
 
-      {/* Global Music Controls & Settings */}
-      <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-        <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-          <Sliders className="w-4 h-4 text-rose-500" />
-          <span>Playback & Audio Settings</span>
+      {/* Playback & Volume Controls */}
+      <div className="bg-slate-900/80 p-6 rounded-2xl border border-slate-800 space-y-4">
+        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+          <Sliders className="w-4 h-4 text-amber-400" />
+          <span>Playback & Audio Controls</span>
         </h3>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <label className="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200/60 dark:border-slate-700 cursor-pointer">
-            <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Autoplay Music</span>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <label className="flex items-center justify-between p-3.5 bg-slate-950 rounded-xl border border-slate-800 cursor-pointer">
+            <span className="text-xs font-bold text-slate-200">Autoplay Music</span>
             <input
               type="checkbox"
               checked={musicSettings.autoplay}
               onChange={(e) => onChangeMusicSettings({ autoplay: e.target.checked })}
-              className="w-4 h-4 accent-rose-500 rounded"
+              className="w-4 h-4 accent-rose-500 rounded cursor-pointer"
             />
           </label>
 
-          <label className="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200/60 dark:border-slate-700 cursor-pointer">
-            <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Loop Playlist</span>
+          <label className="flex items-center justify-between p-3.5 bg-slate-950 rounded-xl border border-slate-800 cursor-pointer">
+            <span className="text-xs font-bold text-slate-200">Loop Playlist</span>
             <input
               type="checkbox"
               checked={musicSettings.loop}
               onChange={(e) => onChangeMusicSettings({ loop: e.target.checked })}
-              className="w-4 h-4 accent-rose-500 rounded"
+              className="w-4 h-4 accent-rose-500 rounded cursor-pointer"
             />
           </label>
 
-          <label className="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200/60 dark:border-slate-700 cursor-pointer">
-            <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Shuffle Playlist</span>
+          <label className="flex items-center justify-between p-3.5 bg-slate-950 rounded-xl border border-slate-800 cursor-pointer">
+            <span className="text-xs font-bold text-slate-200">Shuffle Playlist</span>
             <input
               type="checkbox"
               checked={musicSettings.shuffle}
               onChange={(e) => onChangeMusicSettings({ shuffle: e.target.checked })}
-              className="w-4 h-4 accent-rose-500 rounded"
+              className="w-4 h-4 accent-rose-500 rounded cursor-pointer"
             />
           </label>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-3 border-t border-slate-800">
           <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1 flex items-center gap-1">
-              <Volume2 className="w-3.5 h-3.5 text-rose-500" />
+            <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1 flex items-center gap-1">
+              <Volume2 className="w-3.5 h-3.5 text-rose-400" />
               <span>Default Volume ({Math.round((musicSettings.defaultVolume ?? 0.7) * 100)}%)</span>
             </label>
             <input
@@ -229,12 +237,12 @@ export const MusicManagerTab: React.FC<MusicManagerTabProps> = ({
               step="0.05"
               value={musicSettings.defaultVolume ?? 0.7}
               onChange={(e) => onChangeMusicSettings({ defaultVolume: parseFloat(e.target.value) })}
-              className="w-full accent-rose-500 h-2 bg-slate-200 dark:bg-slate-800 rounded-lg"
+              className="w-full accent-rose-500 h-2 bg-slate-950 rounded-lg cursor-pointer"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+            <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1">
               Fade In (Seconds)
             </label>
             <input
@@ -243,12 +251,12 @@ export const MusicManagerTab: React.FC<MusicManagerTabProps> = ({
               max="10"
               value={musicSettings.fadeInDuration ?? 2}
               onChange={(e) => onChangeMusicSettings({ fadeInDuration: parseInt(e.target.value) })}
-              className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
+              className="w-full bg-slate-950 text-slate-200 border border-slate-800 rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:border-rose-500"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+            <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1">
               Fade Out (Seconds)
             </label>
             <input
@@ -257,7 +265,7 @@ export const MusicManagerTab: React.FC<MusicManagerTabProps> = ({
               max="10"
               value={musicSettings.fadeOutDuration ?? 2}
               onChange={(e) => onChangeMusicSettings({ fadeOutDuration: parseInt(e.target.value) })}
-              className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
+              className="w-full bg-slate-950 text-slate-200 border border-slate-800 rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:border-rose-500"
             />
           </div>
         </div>
@@ -266,28 +274,28 @@ export const MusicManagerTab: React.FC<MusicManagerTabProps> = ({
       {/* Add Song Form */}
       <form
         onSubmit={handleAddSong}
-        className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4"
+        className="bg-slate-900/80 p-6 rounded-2xl border border-slate-800 space-y-4"
       >
-        <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-          <Plus className="w-4 h-4 text-rose-500" />
+        <h3 className="text-sm font-bold text-white flex items-center gap-2">
+          <Plus className="w-4 h-4 text-rose-400" />
           <span>Upload New MP3 Track</span>
         </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+            <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1">
               Upload MP3 Audio File or Paste URL
             </label>
             <label
               className={`px-4 py-2.5 rounded-xl border border-dashed text-xs font-bold transition flex items-center justify-center gap-2 mb-2 ${
                 isUploading
-                  ? 'border-slate-300 bg-slate-100 text-slate-400 cursor-not-allowed'
-                  : 'border-rose-300 dark:border-rose-900 bg-rose-50/50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-300 hover:bg-rose-100/50 cursor-pointer'
+                  ? 'border-slate-700 bg-slate-950 text-slate-500 cursor-not-allowed'
+                  : 'border-rose-500/40 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20 cursor-pointer'
               }`}
             >
               {isUploading ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin text-rose-500" />
+                  <Loader2 className="w-4 h-4 animate-spin text-rose-400" />
                   <span>Uploading to Firebase Storage ({uploadProgress}%)...</span>
                 </>
               ) : (
@@ -305,20 +313,10 @@ export const MusicManagerTab: React.FC<MusicManagerTabProps> = ({
               />
             </label>
 
-            {/* Progress Bar during upload */}
-            {isUploading && (
-              <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2 mb-2 overflow-hidden">
-                <div
-                  className="bg-rose-500 h-2 rounded-full transition-all duration-200"
-                  style={{ width: `${uploadProgress}%` }}
-                />
-              </div>
-            )}
-
             {/* Uploaded Firebase Storage Badge */}
             {newUrl && newUrl.includes('firebasestorage') && !isUploading && (
-              <div className="mb-2 p-2 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-xl flex items-center gap-2 text-xs text-emerald-700 dark:text-emerald-300 font-medium">
-                <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+              <div className="mb-2 p-2 bg-emerald-500/10 border border-emerald-500/30 rounded-xl flex items-center gap-2 text-xs text-emerald-300 font-medium">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
                 <span className="truncate">
                   Uploaded to Firebase Storage {newFileName ? `(${newFileName})` : ''}
                 </span>
@@ -326,8 +324,8 @@ export const MusicManagerTab: React.FC<MusicManagerTabProps> = ({
             )}
 
             {uploadError && (
-              <div className="mb-2 p-2 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 text-rose-600 text-xs font-semibold rounded-xl flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              <div className="mb-2 p-2 bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-semibold rounded-xl flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-400" />
                 <span>{uploadError}</span>
               </div>
             )}
@@ -337,12 +335,12 @@ export const MusicManagerTab: React.FC<MusicManagerTabProps> = ({
               value={newUrl}
               onChange={(e) => setNewUrl(e.target.value)}
               placeholder="Or paste direct MP3 link (https://...)"
-              className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
+              className="w-full bg-slate-950 text-slate-200 border border-slate-800 rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:border-rose-500 font-mono"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+            <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1">
               Song Title / Name
             </label>
             <input
@@ -350,7 +348,7 @@ export const MusicManagerTab: React.FC<MusicManagerTabProps> = ({
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
               placeholder="e.g. Our Special Melody"
-              className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
+              className="w-full bg-slate-950 text-slate-200 border border-slate-800 rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:border-rose-500"
             />
           </div>
         </div>
@@ -358,7 +356,7 @@ export const MusicManagerTab: React.FC<MusicManagerTabProps> = ({
         <button
           type="submit"
           disabled={!newUrl || isUploading}
-          className="w-full py-3 rounded-xl bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-white font-bold text-xs shadow-md transition flex items-center justify-center gap-2"
+          className="w-full py-2.5 rounded-xl bg-gradient-to-r from-rose-500 to-amber-500 hover:from-rose-600 hover:to-amber-600 disabled:opacity-50 text-white font-bold text-xs shadow-md transition flex items-center justify-center gap-2"
         >
           {isUploading ? (
             <>
@@ -375,8 +373,8 @@ export const MusicManagerTab: React.FC<MusicManagerTabProps> = ({
       </form>
 
       {/* Songs List */}
-      <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
-        <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-4">
+      <div className="bg-slate-900/80 p-6 rounded-2xl border border-slate-800">
+        <h3 className="text-sm font-bold text-white mb-4">
           Playlist ({songs.length} Tracks)
         </h3>
 
@@ -384,17 +382,17 @@ export const MusicManagerTab: React.FC<MusicManagerTabProps> = ({
           {songs.map((song, index) => (
             <div
               key={song.id || index}
-              className={`flex items-center gap-4 p-3 rounded-2xl border transition ${
+              className={`flex items-center gap-4 p-3 rounded-xl border transition ${
                 song.isDefault || musicSettings.defaultSongId === song.id
-                  ? 'bg-rose-50/70 dark:bg-rose-950/40 border-rose-300 dark:border-rose-900'
-                  : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200/60 dark:border-slate-700'
+                  ? 'bg-rose-500/10 border-rose-500/40'
+                  : 'bg-slate-950 border-slate-800'
               }`}
             >
               <button
                 onClick={() => togglePreviewPlay(song)}
-                className="w-10 h-10 rounded-xl bg-rose-500 text-white flex items-center justify-center hover:bg-rose-600 transition flex-shrink-0"
+                className="w-9 h-9 rounded-xl bg-gradient-to-r from-rose-500 to-amber-500 text-white flex items-center justify-center hover:opacity-90 transition flex-shrink-0"
               >
-                {playingId === song.id ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
+                {playingId === song.id ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
               </button>
 
               <div className="flex-1 min-w-0">
@@ -402,42 +400,40 @@ export const MusicManagerTab: React.FC<MusicManagerTabProps> = ({
                   type="text"
                   value={song.title}
                   onChange={(e) => handleRename(song.id, e.target.value)}
-                  className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs font-bold"
+                  className="w-full bg-slate-900 text-slate-200 border border-slate-800 rounded-lg px-3 py-1 text-xs font-bold focus:outline-none focus:border-rose-500"
                 />
               </div>
 
-              {/* Default Song Badge / Button */}
               <button
                 onClick={() => handleSetDefault(song.id)}
-                className={`px-3 py-1.5 rounded-xl text-[11px] font-bold transition flex items-center gap-1 ${
+                className={`px-3 py-1 rounded-xl text-[11px] font-bold transition flex items-center gap-1 ${
                   song.isDefault || musicSettings.defaultSongId === song.id
                     ? 'bg-rose-500 text-white shadow-sm'
-                    : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-rose-100'
+                    : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
                 }`}
               >
                 <Check className="w-3.5 h-3.5" />
                 <span>Default</span>
               </button>
 
-              {/* Order Controls */}
               <div className="flex items-center gap-1">
                 <button
                   onClick={() => handleMove(index, 'up')}
                   disabled={index === 0}
-                  className="p-1.5 text-slate-400 hover:text-slate-600 disabled:opacity-30"
+                  className="p-1.5 text-slate-400 hover:text-white disabled:opacity-30"
                 >
                   <ArrowUp className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => handleMove(index, 'down')}
                   disabled={index === songs.length - 1}
-                  className="p-1.5 text-slate-400 hover:text-slate-600 disabled:opacity-30"
+                  className="p-1.5 text-slate-400 hover:text-white disabled:opacity-30"
                 >
                   <ArrowDown className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => handleDelete(song.id)}
-                  className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"
+                  className="p-1.5 text-rose-400 hover:bg-rose-500/10 rounded-lg"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>

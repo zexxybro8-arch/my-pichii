@@ -32,10 +32,6 @@ export const MemoriesSection: React.FC<MemoriesSectionProps> = ({ memories, onNe
   return (
     <section id="memories" className="py-16 px-4 max-w-6xl mx-auto">
       <div className="text-center mb-10">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-300 text-xs font-bold uppercase tracking-wider mb-2">
-          <Camera className="w-4 h-4" />
-          <span>Our Precious Photo Album</span>
-        </div>
         <h2 className="text-3xl sm:text-5xl font-extrabold text-slate-900 dark:text-white">
           Our Favorite Memories 📷
         </h2>

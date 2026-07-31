@@ -1,15 +1,13 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import confetti from 'canvas-confetti';
-import { Sparkles, Heart, MessageCircleHeart, ArrowRight, CheckCircle2, Lock } from 'lucide-react';
+import { Heart, MessageCircleHeart, ArrowRight, CheckCircle2, Lock, RefreshCw, Trophy, Sparkles } from 'lucide-react';
 import { BalloonMessage } from '../../types';
 
 interface BalloonsSectionProps {
   balloons?: BalloonMessage[];
   onNextStep?: () => void;
 }
-
-const STORAGE_KEY = 'romantic_surprise_popped_balloons';
 
 const DEFAULT_BALLOONS: BalloonMessage[] = [
   { id: 'b1', color: '#ff4d6d', message: 'You make my world so much brighter every single day! 💕', order: 1 },
@@ -81,47 +79,60 @@ export const BalloonsSection: React.FC<BalloonsSectionProps> = ({ balloons: rawB
     return DEFAULT_BALLOONS;
   }, [rawBalloons]);
 
-  // Load saved popped IDs from localStorage
-  const [poppedIds, setPoppedIds] = useState<string[]>(() => {
+  // Clean up legacy localStorage item if present and start with empty popped state
+  const [poppedIds, setPoppedIds] = useState<string[]>([]);
+
+  useEffect(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        return JSON.parse(saved);
-      }
+      localStorage.removeItem('romantic_surprise_popped_balloons');
     } catch {
-      // Ignore JSON error
+      // Ignore error
     }
-    return [];
-  });
+  }, []);
 
   const [selectedMessage, setSelectedMessage] = useState<string | null>(null);
-  const [showCelebration, setShowCelebration] = useState(false);
-  const celebrationTriggeredRef = useRef(false);
+  const [showCelebrationBanner, setShowCelebrationBanner] = useState<boolean>(false);
 
   const totalBalloons = balloons.length;
   const poppedCount = balloons.filter((b) => poppedIds.includes(b.id)).length;
   const allPopped = totalBalloons > 0 && poppedCount >= totalBalloons;
   const progressPercent = totalBalloons > 0 ? (poppedCount / totalBalloons) * 100 : 0;
 
-  // Persist poppedIds to localStorage
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(poppedIds));
-    } catch {
-      // Ignore error
-    }
-  }, [poppedIds]);
+  // Filter only remaining unpopped balloons
+  const remainingBalloons = useMemo(() => {
+    return balloons.filter((b) => !poppedIds.includes(b.id));
+  }, [balloons, poppedIds]);
 
-  // Trigger celebration effects when ALL balloons are popped
-  useEffect(() => {
-    if (allPopped && !celebrationTriggeredRef.current) {
-      celebrationTriggeredRef.current = true;
-      setShowCelebration(true);
+  const handlePop = (balloon: BalloonMessage, e: React.MouseEvent<HTMLDivElement>) => {
+    if (poppedIds.includes(balloon.id)) return;
 
-      // Play success audio fanfare
+    // Play pop audio effect
+    playPopSound();
+
+    // Calculate updated list of popped IDs
+    const updated = [...poppedIds, balloon.id];
+    setPoppedIds(updated);
+    setSelectedMessage(balloon.message);
+
+    // Confetti pop effect at balloon click location
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = (rect.left + rect.width / 2) / window.innerWidth;
+    const y = (rect.top + rect.height / 2) / window.innerHeight;
+
+    confetti({
+      particleCount: 45,
+      spread: 70,
+      origin: { x, y },
+      colors: [balloon.color || '#ff4d6d', '#ffb703', '#ffffff', '#ec4899'],
+    });
+
+    // Check if this action pops the final balloon
+    const updatedPoppedCount = balloons.filter((b) => updated.includes(b.id)).length;
+    if (totalBalloons > 0 && updatedPoppedCount >= totalBalloons) {
+      setShowCelebrationBanner(true);
       playSuccessSound();
 
-      // Fire festive confetti burst sequence
+      // Confetti burst for initial completion
       confetti({
         particleCount: 100,
         spread: 90,
@@ -149,34 +160,17 @@ export const BalloonsSection: React.FC<BalloonsSectionProps> = ({ balloons: rawB
         });
       }, 500);
     }
-  }, [allPopped]);
+  };
 
-  const handlePop = (balloon: BalloonMessage, e: React.MouseEvent<HTMLDivElement>) => {
-    // If already popped, show secret message modal again
-    if (poppedIds.includes(balloon.id)) {
-      setSelectedMessage(balloon.message);
-      return;
+  const handleResetBalloons = () => {
+    setPoppedIds([]);
+    setSelectedMessage(null);
+    setShowCelebrationBanner(false);
+    try {
+      localStorage.removeItem('romantic_surprise_popped_balloons');
+    } catch {
+      // Ignore error
     }
-
-    // Play pop sound effect
-    playPopSound();
-
-    // Mark balloon as popped
-    const updated = [...poppedIds, balloon.id];
-    setPoppedIds(updated);
-    setSelectedMessage(balloon.message);
-
-    // Confetti pop effect at mouse click position
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = (rect.left + rect.width / 2) / window.innerWidth;
-    const y = (rect.top + rect.height / 2) / window.innerHeight;
-
-    confetti({
-      particleCount: 45,
-      spread: 70,
-      origin: { x, y },
-      colors: [balloon.color || '#ff4d6d', '#ffb703', '#ffffff', '#ec4899'],
-    });
   };
 
   return (
@@ -186,15 +180,13 @@ export const BalloonsSection: React.FC<BalloonsSectionProps> = ({ balloons: rawB
 
       {/* Header */}
       <div className="mb-8 relative z-10">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-pink-100 dark:bg-pink-950/60 text-pink-600 dark:text-pink-300 text-xs font-bold uppercase tracking-wider mb-3 shadow-sm border border-pink-200/50">
-          <Sparkles className="w-4 h-4 text-pink-500 animate-spin" />
-          <span>Interactive Surprise</span>
-        </div>
         <h2 className="text-3xl sm:text-5xl font-black text-slate-900 dark:text-white tracking-tight">
           Pop a Balloon for Secret Messages 🎈
         </h2>
         <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 mt-2 max-w-lg mx-auto font-medium">
-          Click on each floating balloon to reveal hidden love notes from my heart!
+          {allPopped
+            ? 'All secret balloons have been unlocked and read! 💖'
+            : 'Click on each floating balloon to reveal hidden love notes from my heart!'}
         </p>
       </div>
 
@@ -238,9 +230,9 @@ export const BalloonsSection: React.FC<BalloonsSectionProps> = ({ balloons: rawB
         </div>
       </div>
 
-      {/* Celebration Banner when completed */}
+      {/* Celebration Banner when freshly completed */}
       <AnimatePresence>
-        {allPopped && showCelebration && (
+        {showCelebrationBanner && (
           <motion.div
             initial={{ opacity: 0, y: -20, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -254,26 +246,97 @@ export const BalloonsSection: React.FC<BalloonsSectionProps> = ({ balloons: rawB
         )}
       </AnimatePresence>
 
-      {/* Floating Balloons Grid / Container */}
-      <div className="relative min-h-[320px] flex flex-wrap items-center justify-center gap-6 sm:gap-10 py-6 z-10">
-        {balloons.map((b, idx) => {
-          const isPopped = poppedIds.includes(b.id);
-          return (
-            <motion.div
-              key={b.id}
-              initial={{ y: 0 }}
-              animate={{ y: [0, -18, 0] }}
-              transition={{
-                duration: 3 + (idx % 3),
-                repeat: Infinity,
-                ease: 'easeInOut',
-                delay: idx * 0.35,
-              }}
-              onClick={(e) => handlePop(b, e)}
-              className="relative cursor-pointer group select-none"
+      {/* MAIN INTERACTIVE CONTENT */}
+      {allPopped ? (
+        /* ALL BALLOONS COMPLETED SUCCESS CARD */
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="max-w-2xl mx-auto p-8 sm:p-10 rounded-3xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-2 border-amber-300 dark:border-amber-500/50 shadow-2xl relative z-10"
+        >
+          {/* Animated Trophy / Heart Icon Header */}
+          <div className="w-20 h-20 mx-auto mb-5 rounded-3xl bg-gradient-to-tr from-amber-400 via-rose-500 to-pink-500 text-white flex items-center justify-center shadow-lg border-4 border-white dark:border-slate-800 animate-bounce">
+            <Trophy className="w-10 h-10" />
+          </div>
+
+          <h3 className="text-2xl sm:text-4xl font-extrabold text-slate-900 dark:text-white mb-3">
+            All Balloons Completed ❤️
+          </h3>
+
+          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 font-medium max-w-lg mx-auto mb-8 leading-relaxed">
+            You popped every balloon and unlocked all secret love notes! You are my absolute favorite person in the world.
+          </p>
+
+          {/* List of Revealed Messages for Review */}
+          <div className="text-left mb-8 space-y-3 max-h-80 overflow-y-auto pr-2 custom-scrollbar">
+            <h4 className="text-xs font-bold text-rose-500 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+              <Sparkles className="w-4 h-4 text-amber-400" />
+              <span>Your Unlocked Secret Notes</span>
+            </h4>
+            {balloons.map((b, idx) => (
+              <div
+                key={b.id}
+                className="p-4 rounded-2xl bg-rose-50/80 dark:bg-rose-950/40 border border-rose-200/80 dark:border-rose-900/60 flex items-start gap-3.5 shadow-sm"
+              >
+                <div
+                  className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-white font-bold text-xs shadow-md mt-0.5"
+                  style={{ backgroundColor: b.color || '#ff4d6d' }}
+                >
+                  {idx + 1}
+                </div>
+                <p className="text-sm sm:text-base font-semibold text-rose-900 dark:text-rose-200 italic leading-snug">
+                  "{b.message}"
+                </p>
+              </div>
+            ))}
+          </div>
+
+          {/* Action Controls: Continue Button & Reset Option */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
+            {onNextStep && (
+              <button
+                onClick={onNextStep}
+                className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-gradient-to-r from-pink-500 via-rose-500 to-amber-400 hover:from-pink-600 hover:to-rose-600 text-white font-extrabold text-base shadow-xl hover:scale-105 active:scale-95 transition-all inline-flex items-center justify-center gap-3 cursor-pointer"
+              >
+                <span>Continue to Memory Puzzle 🧩</span>
+                <ArrowRight className="w-5 h-5" />
+              </button>
+            )}
+
+            <button
+              onClick={handleResetBalloons}
+              className="px-5 py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-slate-600 dark:text-slate-300 hover:text-rose-600 dark:hover:text-rose-300 text-xs font-bold transition-all inline-flex items-center gap-2 cursor-pointer border border-slate-200 dark:border-slate-700"
             >
-              {!isPopped ? (
-                /* Unpopped Balloon */
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Pop Balloons Again 🎈</span>
+            </button>
+          </div>
+        </motion.div>
+      ) : (
+        /* UNPOPPED REMAINING BALLOONS GRID */
+        <div className="relative min-h-[320px] flex flex-wrap items-center justify-center gap-6 sm:gap-10 py-6 z-10">
+          <AnimatePresence>
+            {remainingBalloons.map((b, idx) => (
+              <motion.div
+                key={b.id}
+                initial={{ opacity: 0, scale: 0 }}
+                animate={{ opacity: 1, scale: 1, y: [0, -18, 0] }}
+                exit={{ opacity: 0, scale: 0, transition: { duration: 0.3 } }}
+                transition={{
+                  y: {
+                    duration: 3 + (idx % 3),
+                    repeat: Infinity,
+                    ease: 'easeInOut',
+                    delay: idx * 0.35,
+                  },
+                  scale: { duration: 0.3 },
+                  opacity: { duration: 0.3 },
+                }}
+                onClick={(e) => handlePop(b, e)}
+                className="relative cursor-pointer group select-none"
+              >
+                {/* Floating Unpopped Balloon */}
                 <div className="flex flex-col items-center">
                   <div
                     className="w-24 h-32 sm:w-28 sm:h-36 rounded-[50%_50%_50%_50%/40%_40%_60%_60%] shadow-2xl flex items-center justify-center relative transition-transform group-hover:scale-110 active:scale-95"
@@ -290,27 +353,15 @@ export const BalloonsSection: React.FC<BalloonsSectionProps> = ({ balloons: rawB
                   <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: b.color || '#ff4d6d' }} />
                   <div className="w-0.5 h-12 bg-slate-300 dark:bg-slate-700 animate-pulse" />
                 </div>
-              ) : (
-                /* Popped Balloon Badge */
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-rose-50 dark:bg-rose-950/70 border-2 border-dashed border-rose-400/80 flex flex-col items-center justify-center p-2 text-rose-500 shadow-inner group-hover:scale-105 transition-transform"
-                >
-                  <MessageCircleHeart className="w-8 h-8 text-rose-500 animate-bounce" />
-                  <span className="text-[10px] sm:text-xs font-black uppercase mt-1 tracking-wider text-rose-600 dark:text-rose-300">
-                    Popped! ✨
-                  </span>
-                </motion.div>
-              )}
-            </motion.div>
-          );
-        })}
-      </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
+      )}
 
-      {/* Revealed Secret Message Modal / Banner */}
+      {/* Revealed Secret Message Modal for single balloon pop */}
       <AnimatePresence>
-        {selectedMessage && (
+        {!allPopped && selectedMessage && (
           <motion.div
             initial={{ opacity: 0, scale: 0.85, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -318,7 +369,7 @@ export const BalloonsSection: React.FC<BalloonsSectionProps> = ({ balloons: rawB
             className="mt-8 max-w-xl mx-auto p-6 sm:p-8 bg-white dark:bg-slate-900 rounded-3xl border-2 border-rose-300 dark:border-rose-800 shadow-2xl relative z-20"
           >
             <div className="w-12 h-12 mx-auto -mt-12 mb-3 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 text-white flex items-center justify-center shadow-lg border-2 border-white dark:border-slate-900">
-              <Heart className="w-6 h-6 fill-current animate-pulse" />
+              <MessageCircleHeart className="w-6 h-6 fill-current animate-pulse" />
             </div>
 
             <h4 className="text-xl font-black text-slate-900 dark:text-white mb-3 font-serif">
@@ -339,29 +390,13 @@ export const BalloonsSection: React.FC<BalloonsSectionProps> = ({ balloons: rawB
         )}
       </AnimatePresence>
 
-      {/* Next Step Action Button - ONLY VISIBLE WHEN ALL BALLOONS ARE POPPED */}
-      <AnimatePresence>
-        {allPopped && onNextStep && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8, y: 30 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.8, y: 20 }}
-            transition={{ type: 'spring', damping: 16, stiffness: 180 }}
-            className="mt-12 text-center relative z-20"
-          >
-            <div className="relative inline-block group">
-              <div className="absolute -inset-1 bg-gradient-to-r from-pink-600 via-rose-500 to-amber-400 rounded-2xl blur-lg opacity-80 group-hover:opacity-100 transition duration-500 animate-pulse" />
-              <button
-                onClick={onNextStep}
-                className="relative px-8 py-4 rounded-2xl bg-gradient-to-r from-pink-500 to-rose-600 hover:from-pink-600 hover:to-rose-700 text-white font-extrabold text-base sm:text-lg shadow-xl hover:scale-105 active:scale-95 transition-all inline-flex items-center gap-3 border border-rose-300/40 cursor-pointer"
-              >
-                <span>Continue to Memory Puzzle 🧩</span>
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1.5 transition-transform" />
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Next Step Action Button - ONLY VISIBLE WHEN NOT IN ALL-POPPED STATE BUT SOMEHOW COMPLETED OR UNLOCKED */}
+      {!allPopped && poppedCount > 0 && onNextStep && (
+        <div className="mt-8 text-center text-xs text-rose-400 font-medium">
+          Pop all remaining {totalBalloons - poppedCount} balloons to unlock the next page!
+        </div>
+      )}
     </section>
   );
 };
+
