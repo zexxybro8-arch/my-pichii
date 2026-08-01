@@ -63,12 +63,22 @@ export const CoupleInfoTab: React.FC<CoupleInfoTabProps> = ({ config, onChange, 
           <div>
             <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1 flex items-center gap-1">
               <Calendar className="w-3.5 h-3.5 text-rose-500" />
-              <span>Relationship Start Date</span>
+              <span>Relationship Start Date & Time</span>
             </label>
             <input
-              type="date"
-              value={config.relationshipStartDate}
-              onChange={(e) => onChange({ relationshipStartDate: e.target.value })}
+              type="datetime-local"
+              step="1"
+              value={config.relationshipStartDate?.substring(0, 19) || ''}
+              onChange={(e) => {
+                const val = e.target.value ? new Date(e.target.value).toISOString() : e.target.value;
+                onChange({
+                  relationshipStartDate: val,
+                  anniversarySettings: {
+                    ...config.anniversarySettings,
+                    relationshipStartDate: val,
+                  },
+                });
+              }}
               className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-rose-500 font-mono"
             />
           </div>
@@ -76,12 +86,23 @@ export const CoupleInfoTab: React.FC<CoupleInfoTabProps> = ({ config, onChange, 
           <div>
             <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1 flex items-center gap-1">
               <Heart className="w-3.5 h-3.5 text-rose-500" />
-              <span>Anniversary Date</span>
+              <span>Anniversary Date & Time</span>
             </label>
             <input
-              type="date"
-              value={config.anniversaryDate}
-              onChange={(e) => onChange({ anniversaryDate: e.target.value })}
+              type="datetime-local"
+              step="1"
+              value={config.anniversaryDate?.substring(0, 19) || ''}
+              onChange={(e) => {
+                const val = e.target.value ? new Date(e.target.value).toISOString() : e.target.value;
+                onChange({
+                  anniversaryDate: val,
+                  anniversarySettings: {
+                    ...config.anniversarySettings,
+                    anniversaryDate: val,
+                    countdownTargetDate: val,
+                  },
+                });
+              }}
               className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-rose-500 font-mono"
             />
           </div>

@@ -39,6 +39,7 @@ import { Footer } from './components/public/Footer';
 // Common Components
 import { FloatingMusicPlayer } from './components/common/FloatingMusicPlayer';
 import { ParticleOverlay } from './components/common/ParticleOverlay';
+import { ThreeSceneBackground } from './components/3d/ThreeSceneBackground';
 
 // Admin Components
 import { AdminAuthModal } from './components/admin/AdminAuthModal';
@@ -229,136 +230,146 @@ export default function App() {
         backgroundPosition: 'center',
       }}
     >
+      {/* 3D Hardware Accelerated Three.js Interactive WebGL Background */}
+      <ThreeSceneBackground
+        effectType={activeConfig.themeSettings.particleEffect}
+        theme={activeConfig.themeSettings.colorTheme}
+        isAdminOpen={viewMode === 'admin' && isAdminAuthenticated}
+      />
+
       {/* Background Particles */}
       <ParticleOverlay effectType={activeConfig.themeSettings.particleEffect} />
 
-      {/* Persistent Floating Music Player */}
-      <FloatingMusicPlayer
-        songs={songs}
-        musicSettings={activeConfig.musicSettings}
-        autoStartSignal={musicAutoStartSignal}
-      />
+      {/* FOREGROUND WEBSITE & UI LAYER (z-[100] with isolation stacking context) */}
+      <div className="relative z-[100] isolate flex flex-col min-h-screen w-full">
+        {/* Persistent Floating Music Player */}
+        <FloatingMusicPlayer
+          songs={songs}
+          musicSettings={activeConfig.musicSettings}
+          autoStartSignal={musicAutoStartSignal}
+        />
 
-      {/* VIEW MODE: PUBLIC WEBSITE */}
-      {viewMode === 'public' && (
-        <div className="flex flex-col min-h-screen">
-          {/* Header Bar */}
-          <PublicNavbar
-            girlfriendName={activeConfig.girlfriendName}
-            currentStep={currentStep}
-            unlockedStepIndex={unlockedStepIndex}
-            onSelectStep={(step) => setCurrentStep(step)}
-            onOpenAdmin={() => {
-              if (isAdminAuthenticated) {
-                setViewMode('admin');
-              } else {
-                setShowAdminLoginModal(true);
-              }
-            }}
-          />
+        {/* VIEW MODE: PUBLIC WEBSITE */}
+        {viewMode === 'public' && (
+          <div className="flex flex-col min-h-screen relative z-[100] w-full">
+            {/* Header Bar */}
+            <PublicNavbar
+              girlfriendName={activeConfig.girlfriendName}
+              currentStep={currentStep}
+              unlockedStepIndex={unlockedStepIndex}
+              onSelectStep={(step) => setCurrentStep(step)}
+              onOpenAdmin={() => {
+                if (isAdminAuthenticated) {
+                  setViewMode('admin');
+                } else {
+                  setShowAdminLoginModal(true);
+                }
+              }}
+            />
 
-          {/* Page-by-Page Journey Container */}
-          <main className="flex-1 flex flex-col justify-center">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={currentStep}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.4, ease: 'easeInOut' }}
-                className="w-full flex-1 flex flex-col justify-center"
-              >
-                {currentStep === 'welcome' && (
-                  <WelcomeGiftBoxPage
-                    config={activeConfig.welcomePopup}
-                    girlfriendName={activeConfig.girlfriendName}
-                    onOpenBox={() => {
-                      setMusicAutoStartSignal(true);
-                      handleAdvanceStep(
-                        activeConfig.secretPin.enabled ? 'pin' : 'curtain'
-                      );
-                    }}
-                  />
-                )}
+            {/* Page-by-Page Journey Container */}
+            <main className="flex-1 flex flex-col justify-center relative z-10 w-full overflow-x-hidden">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={currentStep}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.4, ease: 'easeInOut' }}
+                  className="w-full flex-1 flex flex-col justify-center"
+                >
+                  {currentStep === 'welcome' && (
+                    <WelcomeGiftBoxPage
+                      config={activeConfig.welcomePopup}
+                      girlfriendName={activeConfig.girlfriendName}
+                      onOpenBox={() => {
+                        setMusicAutoStartSignal(true);
+                        handleAdvanceStep(
+                          activeConfig.secretPin.enabled ? 'pin' : 'curtain'
+                        );
+                      }}
+                    />
+                  )}
 
-                {currentStep === 'pin' && (
-                  <SecretPinPage
-                    config={activeConfig.secretPin}
-                    girlfriendName={activeConfig.girlfriendName}
-                    onSuccess={() => handleAdvanceStep('curtain')}
-                  />
-                )}
+                  {currentStep === 'pin' && (
+                    <SecretPinPage
+                      config={activeConfig.secretPin}
+                      girlfriendName={activeConfig.girlfriendName}
+                      onSuccess={() => handleAdvanceStep('curtain')}
+                    />
+                  )}
 
-                {currentStep === 'curtain' && (
-                  <CurtainRevealPage
-                    girlfriendName={activeConfig.girlfriendName}
-                    onReveal={() => handleAdvanceStep('anniversary')}
-                  />
-                )}
+                  {currentStep === 'curtain' && (
+                    <CurtainRevealPage
+                      girlfriendName={activeConfig.girlfriendName}
+                      onReveal={() => handleAdvanceStep('anniversary')}
+                    />
+                  )}
 
-                {currentStep === 'anniversary' && (
-                  <HeroSection
-                    config={activeConfig}
-                    onNextStep={() => handleAdvanceStep('memories')}
-                  />
-                )}
+                  {currentStep === 'anniversary' && (
+                    <HeroSection
+                      config={activeConfig}
+                      onNextStep={() => handleAdvanceStep('memories')}
+                    />
+                  )}
 
-                {currentStep === 'memories' && (
-                  <MemoriesSection
-                    memories={memories}
-                    onNextStep={() => handleAdvanceStep('wishes')}
-                  />
-                )}
+                  {currentStep === 'memories' && (
+                    <MemoriesSection
+                      memories={memories}
+                      onNextStep={() => handleAdvanceStep('wishes')}
+                    />
+                  )}
 
-                {currentStep === 'wishes' && (
-                  <BalloonsSection
-                    balloons={activeConfig.balloonMessages}
-                    onNextStep={() => handleAdvanceStep('puzzle')}
-                  />
-                )}
+                  {currentStep === 'wishes' && (
+                    <BalloonsSection
+                      balloons={activeConfig.balloonMessages}
+                      onNextStep={() => handleAdvanceStep('puzzle')}
+                    />
+                  )}
 
-                {currentStep === 'puzzle' && (
-                  <PuzzleSection
-                    config={activeConfig.puzzleConfig}
-                    onNextStep={() => handleAdvanceStep('scratch')}
-                  />
-                )}
+                  {currentStep === 'puzzle' && (
+                    <PuzzleSection
+                      config={activeConfig.puzzleConfig}
+                      onNextStep={() => handleAdvanceStep('scratch')}
+                    />
+                  )}
 
-                {currentStep === 'scratch' && (
-                  <ScratchCardSection
-                    config={activeConfig.scratchCardConfig}
-                    onNextStep={() => handleAdvanceStep('letter')}
-                  />
-                )}
+                  {currentStep === 'scratch' && (
+                    <ScratchCardSection
+                      config={activeConfig.scratchCardConfig}
+                      onNextStep={() => handleAdvanceStep('letter')}
+                    />
+                  )}
 
-                {currentStep === 'letter' && (
-                  <LoveLetterSection
-                    config={activeConfig.loveLetter}
-                    onNextStep={() => handleAdvanceStep('celebration')}
-                  />
-                )}
+                  {currentStep === 'letter' && (
+                    <LoveLetterSection
+                      config={activeConfig.loveLetter}
+                      onNextStep={() => handleAdvanceStep('celebration')}
+                    />
+                  )}
 
-                {currentStep === 'celebration' && (
-                  <FinalCelebrationSection
-                    config={activeConfig.finalCelebration}
-                    girlfriendName={activeConfig.girlfriendName}
-                    relationshipStartDate={activeConfig.relationshipStartDate}
-                    onRestart={() => handleAdvanceStep('welcome')}
-                  />
-                )}
-              </motion.div>
-            </AnimatePresence>
-          </main>
+                  {currentStep === 'celebration' && (
+                    <FinalCelebrationSection
+                      config={activeConfig.finalCelebration}
+                      girlfriendName={activeConfig.girlfriendName}
+                      relationshipStartDate={activeConfig.relationshipStartDate}
+                      onRestart={() => handleAdvanceStep('welcome')}
+                    />
+                  )}
+                </motion.div>
+              </AnimatePresence>
+            </main>
 
-          <Footer text={activeConfig.footerText} />
-        </div>
-      )}
+            <Footer text={activeConfig.footerText} />
+          </div>
+        )}
+      </div>
 
       {/* VIEW MODE: ADMIN PANEL WEBSITE CMS */}
       {viewMode === 'admin' && isAdminAuthenticated && (
-        <div className="flex h-screen overflow-hidden bg-slate-950 text-slate-100">
+        <div className="fixed inset-0 z-[999999] flex h-screen w-screen overflow-hidden bg-slate-950/95 backdrop-blur-xl text-slate-100 pointer-events-auto">
           {/* Sidebar Desktop */}
-          <div className="hidden lg:block h-full">
+          <div className="hidden lg:block h-full z-20 shrink-0">
             <AdminSidebar
               activeTab={activeAdminTab}
               setActiveTab={setActiveAdminTab}
@@ -369,9 +380,9 @@ export default function App() {
 
           {/* Sidebar Mobile Overlay */}
           {mobileSidebarOpen && (
-            <div className="fixed inset-0 z-50 flex lg:hidden">
+            <div className="fixed inset-0 z-[1000000] flex lg:hidden">
               <div
-                className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm"
+                className="fixed inset-0 bg-slate-950/80 backdrop-blur-md"
                 onClick={() => setMobileSidebarOpen(false)}
               />
               <div className="relative z-10 w-64 h-full">
@@ -387,9 +398,9 @@ export default function App() {
           )}
 
           {/* Main Admin Content Area */}
-          <div className="flex-1 flex flex-col h-full overflow-hidden">
+          <div className="flex-1 flex flex-col h-full overflow-hidden relative z-10">
             {/* Top Admin Header Bar */}
-            <header className="h-16 bg-slate-900 border-b border-slate-800 px-6 sm:px-8 flex items-center justify-between shrink-0">
+            <header className="h-16 bg-slate-900 border-b border-slate-800 px-6 sm:px-8 flex items-center justify-between shrink-0 z-20">
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setMobileSidebarOpen(true)}
@@ -639,7 +650,7 @@ export default function App() {
 
       {/* Global Toast Notification */}
       {toast.type && (
-        <div className="fixed top-20 right-6 z-50 flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-2xl border backdrop-blur-md transition-all bg-slate-900/95 text-white border-slate-700 animate-in fade-in slide-in-from-top-4">
+        <div className="fixed top-20 right-6 z-[1000001] flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-2xl border backdrop-blur-md transition-all bg-slate-900/95 text-white border-slate-700 animate-in fade-in slide-in-from-top-4">
           {toast.type === 'loading' && <Loader2 className="w-5 h-5 text-rose-400 animate-spin" />}
           {toast.type === 'success' && <CheckCircle2 className="w-5 h-5 text-emerald-400" />}
           {toast.type === 'error' && <AlertCircle className="w-5 h-5 text-rose-400" />}

@@ -10,6 +10,8 @@ import {
   Clock,
 } from 'lucide-react';
 import { FinalCelebrationConfig } from '../../types';
+import { parseRelationshipStartDate, getCalendarTimeTogether } from '../../utils/dateUtils';
+import { Tilt3DCard } from '../3d/Tilt3DCard';
 
 interface FinalCelebrationSectionProps {
   config: FinalCelebrationConfig;
@@ -120,57 +122,44 @@ export const FinalCelebrationSection: React.FC<FinalCelebrationSectionProps> = (
   const [handwritingComplete, setHandwritingComplete] = useState<boolean>(false);
   const [typedMessageCount, setTypedMessageCount] = useState<number>(0);
 
-  // Live real-time current timestamp updated dynamically using setInterval()
+  // Live real-time current timestamp updated dynamically using setInterval() every 1 second
   const [nowMs, setNowMs] = useState<number>(() => Date.now());
 
   useEffect(() => {
-    // Recalculate every minute (60,000 ms) using setInterval
     const timer = setInterval(() => {
       setNowMs(Date.now());
-    }, 60000);
+    }, 1000);
     return () => clearInterval(timer);
   }, []);
 
-  // Relationship Start Date: Exactly 21 March 2025 at 11:20:00 AM (Month 2 = March)
-  const relationshipStart = useMemo(() => new Date(2025, 2, 21, 11, 20, 0), []);
+  const relationshipStart = useMemo(() => {
+    return parseRelationshipStartDate(relationshipStartDate);
+  }, [relationshipStartDate]);
 
-  // Calculate statistics directly using Date.now() timestamp & relationshipStart
   const { yearsVal, monthsVal, daysVal, hoursVal } = useMemo(() => {
     const current = new Date(nowMs);
-    const start = relationshipStart;
+    const timeData = getCalendarTimeTogether(relationshipStart, current);
 
-    // 1. Completed Years
-    let yrs = current.getFullYear() - start.getFullYear();
-    const annivThisYear = new Date(start);
-    annivThisYear.setFullYear(current.getFullYear());
-    if (current < annivThisYear) {
-      yrs--;
-    }
-    const years = Math.max(0, yrs);
+    // Total days and total hours elapsed for summary statistics
+    const totalDiffMs = Math.max(0, current.getTime() - relationshipStart.getTime());
+    const totalDays = Math.floor(totalDiffMs / (1000 * 60 * 60 * 24));
+    const totalHours = Math.floor(totalDiffMs / (1000 * 60 * 60));
 
-    // 2. Completed Months
-    let m = (current.getFullYear() - start.getFullYear()) * 12 + (current.getMonth() - start.getMonth());
-    const targetDay = start.getDate();
-    const currentDay = current.getDate();
-    if (
-      currentDay < targetDay ||
-      (currentDay === targetDay &&
-        (current.getHours() < start.getHours() ||
-          (current.getHours() === start.getHours() && current.getMinutes() < start.getMinutes())))
-    ) {
-      m--;
-    }
-    const months = Math.max(0, m);
+    // Total completed months
+    const totalMonths = timeData.years * 12 + timeData.months;
 
-    // 3. Exact Elapsed Days
-    const diffMs = current.getTime() - start.getTime();
-    const days = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+    const customY = config.yearsValue !== undefined && config.yearsValue !== null ? Number(config.yearsValue) : NaN;
+    const customM = config.monthsValue !== undefined && config.monthsValue !== null ? Number(config.monthsValue) : NaN;
+    const customD = config.daysValue !== undefined && config.daysValue !== null ? Number(config.daysValue) : NaN;
+    const customH = config.hoursValue !== undefined && config.hoursValue !== null ? Number(config.hoursValue) : NaN;
 
-    // 4. Exact Elapsed Hours
-    const hours = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60)));
-
-    return { yearsVal: years, monthsVal: months, daysVal: days, hoursVal: hours };
-  }, [nowMs, relationshipStart]);
+    return {
+      yearsVal: !isNaN(customY) ? customY : timeData.years,
+      monthsVal: !isNaN(customM) ? customM : totalMonths,
+      daysVal: !isNaN(customD) ? customD : totalDays,
+      hoursVal: !isNaN(customH) ? customH : totalHours,
+    };
+  }, [nowMs, relationshipStart, config.yearsValue, config.monthsValue, config.daysValue, config.hoursValue]);
 
   // Animated Counter Values from 0 to target
   const animatedYears = useAnimatedCounter(yearsVal, 1800);
@@ -203,8 +192,14 @@ export const FinalCelebrationSection: React.FC<FinalCelebrationSectionProps> = (
     }));
   }, []);
 
-  const endingLine1 = "Thank you for being the most beautiful part of my life.";
-  const endingLine2 = "I Love You Forever ❤️";
+  const endingLine1 = config.endingLine1 ?? "Thank you for being the most beautiful part of my life.";
+  const endingLine2 = config.endingLine2 ?? "I Love You Forever ❤️";
+  const yearsLabel = config.yearsLabel || "Years Together";
+  const monthsLabel = config.monthsLabel || "Months Together";
+  const daysLabel = config.daysLabel || "Days Together";
+  const hoursLabel = config.hoursLabel || "Hours Together";
+  const replayButtonText = config.replayButtonText || "Replay Journey";
+  const footerText = config.footerText || "Made with endless love";
 
   // Handwriting Animation Effect for Ending
   useEffect(() => {
@@ -221,15 +216,19 @@ export const FinalCelebrationSection: React.FC<FinalCelebrationSectionProps> = (
 
   // Initial Celebration Effect on Mount
   useEffect(() => {
-    playRomanticChime();
+    if (config.enableSoundEffects !== false) {
+      playRomanticChime();
+    }
 
-    // Small initial sparkle burst
-    confetti({
-      particleCount: 50,
-      spread: 70,
-      origin: { y: 0.5 },
-      colors: ['#ff7ba9', '#ffd76a', '#ffffff', '#ffdce8'],
-    });
+    if (config.enableConfetti !== false) {
+      // Small initial sparkle burst
+      confetti({
+        particleCount: 50,
+        spread: 70,
+        origin: { y: 0.5 },
+        colors: ['#ff7ba9', '#ffd76a', '#ffffff', '#ffdce8'],
+      });
+    }
 
     // Auto launch grand romantic celebration after 3 seconds
     const timer = setTimeout(() => {
@@ -243,7 +242,14 @@ export const FinalCelebrationSection: React.FC<FinalCelebrationSectionProps> = (
     setCelebrated(true);
     setIsRippling(true);
     setTimeout(() => setIsRippling(false), 800);
-    playSparkleSound();
+
+    if (config.enableSoundEffects !== false) {
+      playSparkleSound();
+    }
+
+    if (config.enableConfetti === false && config.enableFireworks === false) {
+      return;
+    }
 
     const duration = 4.5 * 1000;
     const animationEnd = Date.now() + duration;
@@ -256,22 +262,24 @@ export const FinalCelebrationSection: React.FC<FinalCelebrationSectionProps> = (
       }
       const particleCount = 60 * (timeLeft / duration);
 
-      // Fireworks left and right
-      confetti({
-        particleCount,
-        startVelocity: 35,
-        spread: 360,
-        origin: { x: Math.random() * 0.4 + 0.1, y: Math.random() * 0.5 + 0.1 },
-        colors: ['#ff7ba9', '#ffd76a', '#e0aaff', '#ffffff', '#e11d48'],
-      });
+      if (config.enableFireworks !== false) {
+        // Fireworks left and right
+        confetti({
+          particleCount,
+          startVelocity: 35,
+          spread: 360,
+          origin: { x: Math.random() * 0.4 + 0.1, y: Math.random() * 0.5 + 0.1 },
+          colors: ['#ff7ba9', '#ffd76a', '#e0aaff', '#ffffff', '#e11d48'],
+        });
 
-      confetti({
-        particleCount,
-        startVelocity: 35,
-        spread: 360,
-        origin: { x: Math.random() * 0.4 + 0.5, y: Math.random() * 0.5 + 0.1 },
-        colors: ['#ff7ba9', '#ffd76a', '#ffb3c6', '#ffffff', '#e11d48'],
-      });
+        confetti({
+          particleCount,
+          startVelocity: 35,
+          spread: 360,
+          origin: { x: Math.random() * 0.4 + 0.5, y: Math.random() * 0.5 + 0.1 },
+          colors: ['#ff7ba9', '#ffd76a', '#ffb3c6', '#ffffff', '#e11d48'],
+        });
+      }
     }, 300);
   };
 
@@ -403,7 +411,12 @@ export const FinalCelebrationSection: React.FC<FinalCelebrationSectionProps> = (
           {config.message}
         </p>
 
-        {/* LOVE COUNTER GRID */}
+        {/* LOVE COUNTER HEADER & GRID */}
+        {config.counterTitle && (
+          <h3 className="text-xs sm:text-sm font-extrabold uppercase tracking-widest text-[#9E3B5E] mb-3 text-center">
+            {config.counterTitle}
+          </h3>
+        )}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 mb-10 text-left">
           {/* 1. Years Together */}
           <div className="p-3.5 rounded-2xl bg-gradient-to-b from-[#FFF8F0] to-[#FFDCE8] border border-[#FFD76A]/60 shadow-sm flex flex-col items-center text-center hover:scale-105 transition-transform">
@@ -412,7 +425,7 @@ export const FinalCelebrationSection: React.FC<FinalCelebrationSectionProps> = (
               {animatedYears.toLocaleString()}
             </span>
             <span className="text-[11px] font-bold text-[#9E3B5E] uppercase tracking-wider">
-              Years Together
+              {yearsLabel}
             </span>
           </div>
 
@@ -423,7 +436,7 @@ export const FinalCelebrationSection: React.FC<FinalCelebrationSectionProps> = (
               {animatedMonths.toLocaleString()}
             </span>
             <span className="text-[11px] font-bold text-[#9E3B5E] uppercase tracking-wider">
-              Months Together
+              {monthsLabel}
             </span>
           </div>
 
@@ -434,7 +447,7 @@ export const FinalCelebrationSection: React.FC<FinalCelebrationSectionProps> = (
               {animatedDays.toLocaleString()}
             </span>
             <span className="text-[11px] font-bold text-[#9E3B5E] uppercase tracking-wider">
-              Days Together
+              {daysLabel}
             </span>
           </div>
 
@@ -445,7 +458,7 @@ export const FinalCelebrationSection: React.FC<FinalCelebrationSectionProps> = (
               {animatedHours.toLocaleString()}
             </span>
             <span className="text-[11px] font-bold text-[#9E3B5E] uppercase tracking-wider">
-              Hours Together
+              {hoursLabel}
             </span>
           </div>
         </div>
@@ -480,7 +493,7 @@ export const FinalCelebrationSection: React.FC<FinalCelebrationSectionProps> = (
               className="w-full sm:w-auto px-6 py-4 rounded-full bg-white/80 hover:bg-white text-[#7A2846] font-extrabold text-sm backdrop-blur-md border-2 border-[#FF7BA9]/40 hover:border-[#FF7BA9] transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md"
             >
               <RotateCcw className="w-4 h-4 text-[#E11D48]" />
-              <span>Replay Journey</span>
+              <span>{replayButtonText}</span>
             </motion.button>
           )}
         </div>
@@ -505,7 +518,7 @@ export const FinalCelebrationSection: React.FC<FinalCelebrationSectionProps> = (
       {/* BOTTOM FOOTER BRANDING */}
       <div className="mt-8 relative z-20 flex items-center justify-center gap-2 text-xs font-extrabold text-[#9E3B5E] tracking-wider uppercase">
         <Sparkles className="w-3.5 h-3.5 text-[#D97706]" />
-        <span>Made with endless love</span>
+        <span>{footerText}</span>
         <Heart className="w-4 h-4 text-[#E11D48] fill-[#E11D48] animate-ping" />
         <Sparkles className="w-3.5 h-3.5 text-[#D97706]" />
       </div>

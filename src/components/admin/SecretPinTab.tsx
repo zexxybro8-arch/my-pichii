@@ -56,7 +56,7 @@ export const SecretPinTab: React.FC<SecretPinTabProps> = ({ config, onChange, on
               value={config.pin}
               onChange={(e) => onChange({ pin: e.target.value.replace(/\D/g, '') })}
               className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-mono text-center text-lg font-bold focus:ring-2 focus:ring-rose-500"
-              placeholder="1402"
+              placeholder="2103"
             />
           </div>
 

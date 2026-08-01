@@ -35,7 +35,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ onAuthenticated,
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md">
+    <div className="fixed inset-0 z-[1000000] flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md">
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}

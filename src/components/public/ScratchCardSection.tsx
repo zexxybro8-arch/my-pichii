@@ -136,15 +136,31 @@ export const ScratchCardSection: React.FC<ScratchCardSectionProps> = ({ config, 
     }));
   }, []);
 
-  // Luxury Love Certificate Coupons
-  const loveCoupons = [
-    { icon: Heart, title: 'Unlimited Hugs', subtitle: 'Valid Anytime, Anywhere', color: 'from-[#FF5C9A] to-[#D89CA4]' },
-    { icon: Sparkles, title: '1,000 Kisses', subtitle: 'Sweetness Guarantee', color: 'from-[#EBCB8B] to-[#FF5C9A]' },
-    { icon: Coffee, title: 'Date Night', subtitle: 'Your Favorite Mood', color: 'from-[#FFD3B6] to-[#FF5C9A]' },
-    { icon: Film, title: 'Movie Night', subtitle: 'Snacks & Cuddles', color: 'from-[#EEDCFF] to-[#D89CA4]' },
-    { icon: UtensilsCrossed, title: 'Romantic Dinner', subtitle: 'Cooked With Love', color: 'from-[#FF5C9A] to-[#EBCB8B]' },
-    { icon: Smile, title: 'One Wish Coupon', subtitle: 'Command Anything', color: 'from-[#EBCB8B] to-[#FFE4EC]' },
+  // Helper to map icon names to Lucide icon components
+  const getCardIcon = (iconName?: string) => {
+    switch (iconName) {
+      case 'Heart': return Heart;
+      case 'Sparkles': return Sparkles;
+      case 'Coffee': return Coffee;
+      case 'Film': return Film;
+      case 'UtensilsCrossed': return UtensilsCrossed;
+      case 'Smile': return Smile;
+      case 'Crown': return Crown;
+      case 'Gift': default: return Gift;
+    }
+  };
+
+  // Fallback default reward coupons if config.rewardCards is empty
+  const defaultCoupons = [
+    { id: 'r1', title: 'Unlimited Hugs', subtitle: 'Valid Anytime, Anywhere', icon: 'Heart', color: 'from-[#FF5C9A] to-[#D89CA4]' },
+    { id: 'r2', title: '1000 Kisses', subtitle: 'Sweetness Guaranteed', icon: 'Sparkles', color: 'from-[#EBCB8B] to-[#FF5C9A]' },
+    { id: 'r3', title: 'Date Night', subtitle: 'Your Favorite Mood', icon: 'Coffee', color: 'from-[#FFD3B6] to-[#FF5C9A]' },
+    { id: 'r4', title: 'Movie Night', subtitle: 'Snacks & Cuddles', icon: 'Film', color: 'from-[#EEDCFF] to-[#D89CA4]' },
+    { id: 'r5', title: 'Romantic Dinner', subtitle: 'Cooked With Love', icon: 'UtensilsCrossed', color: 'from-[#FF5C9A] to-[#EBCB8B]' },
+    { id: 'r6', title: 'One Wish Coupon', subtitle: 'Command Anything', icon: 'Smile', color: 'from-[#EBCB8B] to-[#FFE4EC]' },
   ];
+
+  const rewardCardsList = (config.rewardCards && config.rewardCards.length > 0) ? config.rewardCards : defaultCoupons;
 
   const lastPosRef = useRef<{ x: number; y: number } | null>(null);
   const lastSoundTimeRef = useRef<number>(0);
@@ -208,7 +224,11 @@ export const ScratchCardSection: React.FC<ScratchCardSectionProps> = ({ config, 
     // Subtitle instruction
     ctx.font = '500 12px "Plus Jakarta Sans", -apple-system, sans-serif';
     ctx.fillStyle = '#6B7280';
-    ctx.fillText('Scratch softly to reveal hidden voucher', width / 2, height / 2 + 16);
+    ctx.fillText(
+      config.overlaySubtext || 'Scratch softly to reveal hidden voucher',
+      width / 2,
+      height / 2 + 16
+    );
 
     // Reset shadow
     ctx.shadowBlur = 0;
@@ -218,7 +238,7 @@ export const ScratchCardSection: React.FC<ScratchCardSectionProps> = ({ config, 
 
   useEffect(() => {
     initCanvas();
-  }, [config.overlayColor, config.overlayText]);
+  }, [config.overlayColor, config.overlayText, config.overlaySubtext]);
 
   // Handle 3D Parallax Tilt
   const handleMouseMove3D = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -430,13 +450,13 @@ export const ScratchCardSection: React.FC<ScratchCardSectionProps> = ({ config, 
       <div className="mb-8 relative z-20 font-sans-ios text-center">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/80 border border-[#D89CA4]/30 shadow-sm text-xs font-semibold text-[#7C2D48] tracking-[0.2px] uppercase mb-3 backdrop-blur-md">
           <Crown className="w-3.5 h-3.5 text-[#EBCB8B]" />
-          <span>Exclusive Voucher</span>
+          <span>{config.voucherBadge || 'Exclusive Voucher'}</span>
         </div>
         <h2 className="text-2xl sm:text-4xl font-bold text-[#2D151E] tracking-[0.2px] leading-[1.25] font-sans-ios">
-          Love Voucher Certificate 🎟️
+          {config.voucherTitle || 'Love Voucher Certificate 🎟️'}
         </h2>
         <p className="text-xs sm:text-sm text-[#6B7280] font-medium mt-2 max-w-lg mx-auto leading-[1.3] tracking-[0.1px]">
-          Scratch off the rose-gold champagne foil to claim your official romantic gift certificate.
+          {config.voucherDescription || 'Scratch off the rose-gold champagne foil to claim your official romantic gift certificate.'}
         </p>
       </div>
 
@@ -489,7 +509,7 @@ export const ScratchCardSection: React.FC<ScratchCardSectionProps> = ({ config, 
           <div className="flex items-center justify-center gap-2 mb-6">
             <Gift className="w-5 h-5 text-[#FF5C9A] animate-bounce" />
             <h3 className="text-xl sm:text-2xl font-bold text-[#2D151E] font-sans-ios tracking-[0.2px] leading-[1.25]">
-              {config.voucherTitle || 'Love Coupon Certificate 🎁'}
+              {config.couponHeader || config.voucherTitle || 'Love Coupon Certificate 🎁'}
             </h3>
             <Sparkles className="w-5 h-5 text-[#EBCB8B] animate-pulse" />
           </div>
@@ -508,7 +528,7 @@ export const ScratchCardSection: React.FC<ScratchCardSectionProps> = ({ config, 
                     className="mb-3 flex items-center gap-2 px-4 py-1.5 rounded-full bg-gradient-to-r from-[#FF5C9A] to-[#D89CA4] text-white text-xs font-bold uppercase tracking-wider shadow-md border border-white/60"
                   >
                     <Award className="w-4 h-4 text-[#EBCB8B]" />
-                    <span>Official Certificate Unlocked ❤️</span>
+                    <span>{config.unlockedBadgeText || 'Official Certificate Unlocked ❤️'}</span>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -519,15 +539,15 @@ export const ScratchCardSection: React.FC<ScratchCardSectionProps> = ({ config, 
 
               {/* Grid of Luxury Love Coupons */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 w-full mt-2 font-sans-ios">
-                {loveCoupons.map((coupon, idx) => {
-                  const IconComp = coupon.icon;
+                {rewardCardsList.map((coupon, idx) => {
+                  const IconComp = getCardIcon(coupon.icon);
                   return (
                     <motion.div
-                      key={idx}
+                      key={coupon.id || idx}
                       whileHover={{ scale: 1.04 }}
                       className="p-3 rounded-2xl bg-white/90 border border-[#D89CA4]/30 shadow-sm flex flex-col items-center text-center backdrop-blur-md"
                     >
-                      <div className={`w-8 h-8 rounded-full bg-gradient-to-tr ${coupon.color} text-white flex items-center justify-center shadow-md mb-1.5`}>
+                      <div className={`w-8 h-8 rounded-full bg-gradient-to-tr ${coupon.color || 'from-[#FF5C9A] to-[#D89CA4]'} text-white flex items-center justify-center shadow-md mb-1.5`}>
                         <IconComp className="w-4 h-4" />
                       </div>
                       <span className="text-xs font-bold text-[#5A1D32] line-clamp-1">{coupon.title}</span>
@@ -563,7 +583,7 @@ export const ScratchCardSection: React.FC<ScratchCardSectionProps> = ({ config, 
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/90 hover:bg-white text-[#5A1D32] text-xs font-bold border border-[#D89CA4]/50 hover:border-[#FF5C9A] transition shadow-sm cursor-pointer"
             >
               <RotateCcw className="w-4 h-4 text-[#FF5C9A]" />
-              <span>Scratch Foil Again</span>
+              <span>{config.scratchAgainButtonText || 'Scratch Foil Again'}</span>
             </button>
           </div>
         </motion.div>
@@ -590,7 +610,7 @@ export const ScratchCardSection: React.FC<ScratchCardSectionProps> = ({ config, 
                   className="absolute inset-0 rounded-full bg-white/50 pointer-events-none"
                 />
               )}
-              <span className="relative z-10">Continue to Love Letter 💌</span>
+              <span className="relative z-10">{config.continueButtonText || 'Continue to Love Letter 💌'}</span>
               <ArrowRight className="w-5 h-5 relative z-10 group-hover:translate-x-1.5 transition-transform" />
             </button>
           </div>

@@ -24,19 +24,56 @@ export interface SecretPinConfig {
 }
 
 export interface AnniversaryConfig {
-  title?: string;
-  subtitle?: string;
-  relationshipStartDate: string; // ISO string '2025-03-21T11:20:00'
-  anniversaryDate?: string;
+  // Titles & Headings
+  title?: string; // Greeting text e.g. "Hey"
+  subtitle?: string; // Subtitle line under greeting
+  togetherSinceLabel?: string; // Label for together since box
+  milestoneMessage?: string; // Quote/subtext under relationship timer
+  cardTitle?: string; // Next anniversary card header
+  cardBadge?: string; // Badge label for next anniversary date
+  milestoneReachedTitle?: string; // Title when countdown reaches 0
+  milestoneReachedMessage?: string; // Message when countdown reaches 0
+  progressTitle?: string; // Title for love progress bar
+  progressSubtitle?: string; // Subtitle under love progress bar
+  buttonText?: string; // Text for continue button
+
+  // Dates & Timestamps
+  relationshipStartDate: string; // ISO format e.g. '2025-03-21T11:20:43'
+  anniversaryDate: string; // ISO format e.g. '2027-03-21T11:20:43'
+  countdownTargetDate?: string; // ISO format for target countdown e.g. '2027-03-21T11:20:43'
+
+  // Pause & Resume State
+  isPaused?: boolean;
+  pausedAt?: string; // ISO string timestamp when paused
+  pausedRemainingSeconds?: number; // Snapshot of remaining seconds when paused
+
+  // Unit Labels
   customLabelYears?: string;
   customLabelMonths?: string;
   customLabelDays?: string;
   customLabelHours?: string;
   customLabelMinutes?: string;
   customLabelSeconds?: string;
+
+  // Custom Emojis
+  emojiMainHeader?: string;
+  emojiGreetingHeart?: string;
+  emojiYears?: string;
+  emojiMonths?: string;
+  emojiDays?: string;
+  emojiHours?: string;
+  emojiMinutes?: string;
+  emojiSeconds?: string;
+  emojiCountdownCard?: string;
+  emojiButton?: string;
+
+  // Colors & Styling
+  titleGradientFrom?: string;
+  titleGradientTo?: string;
+
+  // Display Options
   showLiveTimer?: boolean;
   timerUpdateIntervalSeconds?: number;
-  milestoneMessage?: string;
   displayStyle?: string;
 }
 
@@ -101,14 +138,20 @@ export interface ScratchRewardCard {
 }
 
 export interface ScratchCardConfig {
-  hiddenMessage: string; // Secret coupon prize
-  voucherTitle: string;
-  voucherDescription?: string;
+  hiddenMessage: string; // Secret coupon prize / Coupon Description
+  voucherTitle: string; // Main Title (e.g. Love Voucher Certificate 🎟️)
+  voucherDescription?: string; // Subtitle / Description
+  voucherBadge?: string; // Top badge (e.g. Exclusive Voucher)
+  couponHeader?: string; // Inside card header (e.g. Love Coupon Certificate 🎁)
+  unlockedBadgeText?: string; // Unlocked badge text (e.g. Official Certificate Unlocked ❤️)
   voucherImage?: string;
-  overlayText: string; // e.g. 'Scratch here for your surprise!'
+  overlayText: string; // e.g. 'Rub foil with finger to unlock certificate'
+  overlaySubtext?: string; // e.g. 'Scratch softly to reveal hidden voucher'
   overlayColor?: string; // Foil gold color hex
   revealPercentage?: number; // threshold to reveal, e.g. 40%
   rewardCards?: ScratchRewardCard[];
+  scratchAgainButtonText?: string; // e.g. 'Scratch Foil Again'
+  continueButtonText?: string; // e.g. 'Continue to Love Letter 💌'
   successAnimation?: string;
   enableSounds?: boolean;
 }
@@ -133,9 +176,21 @@ export interface FinalCelebrationConfig {
   subtitle: string;
   message: string;
   buttonText: string;
+  replayButtonText?: string;
   quotes?: string[];
   counterTitle?: string;
   endingMessage?: string;
+  endingLine1?: string;
+  endingLine2?: string;
+  yearsLabel?: string;
+  monthsLabel?: string;
+  daysLabel?: string;
+  hoursLabel?: string;
+  yearsValue?: number;
+  monthsValue?: number;
+  daysValue?: number;
+  hoursValue?: number;
+  footerText?: string;
   enableConfetti: boolean;
   enableFireworks: boolean;
   enableHeartRain?: boolean;

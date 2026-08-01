@@ -88,6 +88,7 @@ export const LivePreviewTab: React.FC<LivePreviewTabProps> = ({
           <FinalCelebrationSection
             config={config.finalCelebration}
             girlfriendName={config.girlfriendName}
+            relationshipStartDate={config.relationshipStartDate}
             onRestart={() => setPreviewStep('welcome')}
           />
         );

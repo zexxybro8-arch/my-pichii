@@ -16,10 +16,14 @@ import {
   ListMusic,
   Heart,
   Sparkles,
-  ChevronUp,
-  ChevronDown,
+  GripVertical,
 } from 'lucide-react';
 import { Song, MusicSettingsConfig } from '../../types';
+import {
+  fetchMusicPlayerPosition,
+  saveMusicPlayerPosition,
+  WidgetPosition,
+} from '../../lib/firebase';
 
 interface FloatingMusicPlayerProps {
   songs: Song[];
@@ -44,7 +48,84 @@ export const FloatingMusicPlayer: React.FC<FloatingMusicPlayerProps> = ({
   const [userInteracted, setUserInteracted] = useState<boolean>(false);
   const [showPlaylist, setShowPlaylist] = useState<boolean>(false);
 
+  // Position & Drag state
+  const [position, setPosition] = useState<WidgetPosition | null>(null);
+  const [isDragging, setIsDragging] = useState<boolean>(false);
+  const playerRef = useRef<HTMLDivElement | null>(null);
+
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Prevent drag triggering on interactive elements
+  const stopProp = (e: React.SyntheticEvent) => {
+    e.stopPropagation();
+  };
+
+  // Helper to clamp position within screen boundaries
+  const clampPosition = (x: number, y: number, currentMinimized = isMinimized): WidgetPosition => {
+    if (typeof window === 'undefined') return { x, y };
+    const margin = 12; // margin in px from screen edges
+    const pWidth = playerRef.current
+      ? playerRef.current.offsetWidth
+      : currentMinimized
+      ? 240
+      : 320;
+    const pHeight = playerRef.current
+      ? playerRef.current.offsetHeight
+      : currentMinimized
+      ? 60
+      : 280;
+
+    const maxX = Math.max(margin, window.innerWidth - pWidth - margin);
+    const maxY = Math.max(margin, window.innerHeight - pHeight - margin);
+
+    return {
+      x: Math.max(margin, Math.min(x, maxX)),
+      y: Math.max(margin, Math.min(y, maxY)),
+    };
+  };
+
+  // Load last saved position from Firestore / LocalStorage on mount
+  useEffect(() => {
+    let isMounted = true;
+
+    fetchMusicPlayerPosition().then((savedPos) => {
+      if (!isMounted) return;
+      if (savedPos) {
+        setPosition(clampPosition(savedPos.x, savedPos.y));
+      } else {
+        // Default position: bottom right corner
+        const pWidth = isMinimized ? 240 : 320;
+        const pHeight = isMinimized ? 60 : 280;
+        const margin = 20;
+        const defaultX = Math.max(margin, window.innerWidth - pWidth - margin);
+        const defaultY = Math.max(margin, window.innerHeight - pHeight - margin);
+        setPosition({ x: defaultX, y: defaultY });
+      }
+    });
+
+    const handleResize = () => {
+      setPosition((prev) => {
+        if (!prev) return prev;
+        return clampPosition(prev.x, prev.y);
+      });
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => {
+      isMounted = false;
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
+
+  // Re-clamp position whenever size changes (minimized vs expanded)
+  useEffect(() => {
+    if (position) {
+      const timer = setTimeout(() => {
+        setPosition((prev) => (prev ? clampPosition(prev.x, prev.y) : prev));
+      }, 60);
+      return () => clearTimeout(timer);
+    }
+  }, [isMinimized]);
 
   // Synchronize default song if specified
   useEffect(() => {
@@ -167,6 +248,12 @@ export const FloatingMusicPlayer: React.FC<FloatingMusicPlayerProps> = ({
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
+  // Fallback initial position if position state is loading
+  const currentPos = position || {
+    x: typeof window !== 'undefined' ? Math.max(12, window.innerWidth - 340) : 20,
+    y: typeof window !== 'undefined' ? Math.max(12, window.innerHeight - 300) : 20,
+  };
+
   return (
     <>
       <audio
@@ -177,11 +264,40 @@ export const FloatingMusicPlayer: React.FC<FloatingMusicPlayerProps> = ({
       />
 
       <motion.div
+        ref={playerRef}
         id="floating-music-player"
-        initial={{ opacity: 0, y: 20, scale: 0.95 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.3 }}
-        className="fixed bottom-5 right-5 z-50 transition-all duration-300 shadow-2xl rounded-3xl border border-rose-300/60 dark:border-rose-900/50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl text-slate-800 dark:text-rose-100 overflow-hidden ring-4 ring-rose-500/10"
+        drag
+        dragMomentum={false}
+        dragElastic={0.06}
+        dragConstraints={{
+          left: 12,
+          top: 12,
+          right: Math.max(
+            12,
+            (typeof window !== 'undefined' ? window.innerWidth : 1000) -
+              (playerRef.current?.offsetWidth || (isMinimized ? 240 : 320)) -
+              12
+          ),
+          bottom: Math.max(
+            12,
+            (typeof window !== 'undefined' ? window.innerHeight : 800) -
+              (playerRef.current?.offsetHeight || (isMinimized ? 60 : 280)) -
+              12
+          ),
+        }}
+        style={{ x: currentPos.x, y: currentPos.y }}
+        onDragStart={() => setIsDragging(true)}
+        onDragEnd={() => {
+          setIsDragging(false);
+          if (!playerRef.current) return;
+          const rect = playerRef.current.getBoundingClientRect();
+          const clamped = clampPosition(rect.left, rect.top);
+          setPosition(clamped);
+          saveMusicPlayerPosition(clamped);
+        }}
+        className={`fixed top-0 left-0 z-[99999] shadow-2xl rounded-3xl border border-rose-300/60 dark:border-rose-900/50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl text-slate-800 dark:text-rose-100 overflow-hidden ring-4 ring-rose-500/10 cursor-grab active:cursor-grabbing select-none touch-none ${
+          isDragging ? 'shadow-rose-500/30 scale-[1.02] ring-rose-500/40' : 'transition-shadow duration-300'
+        }`}
       >
         {isMinimized ? (
           /* Cute Minimized Floating Pill */
@@ -189,11 +305,17 @@ export const FloatingMusicPlayer: React.FC<FloatingMusicPlayerProps> = ({
             key="minimized"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="flex items-center gap-3 px-4 py-2.5 bg-gradient-to-r from-rose-50/90 via-pink-50/90 to-amber-50/90 dark:from-slate-900 dark:to-rose-950/90"
+            className="flex items-center gap-2.5 px-3.5 py-2.5 bg-gradient-to-r from-rose-50/90 via-pink-50/90 to-amber-50/90 dark:from-slate-900 dark:to-rose-950/90"
           >
+            <div className="flex items-center text-slate-400 dark:text-slate-500 hover:text-rose-500 transition cursor-grab">
+              <GripVertical className="w-4 h-4 opacity-70" />
+            </div>
+
             <button
               onClick={togglePlay}
-              className="relative p-2 rounded-full bg-gradient-to-tr from-rose-500 to-pink-500 text-white hover:scale-105 active:scale-95 transition-all shadow-md shadow-rose-500/30 flex items-center justify-center group"
+              onPointerDown={stopProp}
+              onTouchStart={stopProp}
+              className="relative p-2 rounded-full bg-gradient-to-tr from-rose-500 to-pink-500 text-white hover:scale-105 active:scale-95 transition-all shadow-md shadow-rose-500/30 flex items-center justify-center group cursor-pointer"
               title={isPlaying ? 'Pause' : 'Play'}
             >
               <Disc
@@ -207,13 +329,15 @@ export const FloatingMusicPlayer: React.FC<FloatingMusicPlayerProps> = ({
               <span className="text-[10px] font-extrabold uppercase tracking-wider text-rose-500 flex items-center gap-1">
                 <Heart className="w-2.5 h-2.5 fill-current animate-pulse" /> Love Radio
               </span>
-              <div className="text-xs font-bold max-w-[130px] truncate text-slate-900 dark:text-white">
+              <div className="text-xs font-bold max-w-[120px] truncate text-slate-900 dark:text-white">
                 {currentSong.title}
               </div>
             </div>
             <button
               onClick={() => setIsMinimized(false)}
-              className="p-1.5 rounded-full text-slate-400 hover:text-rose-600 hover:bg-rose-100/60 dark:hover:bg-rose-950 transition"
+              onPointerDown={stopProp}
+              onTouchStart={stopProp}
+              className="p-1.5 rounded-full text-slate-400 hover:text-rose-600 hover:bg-rose-100/60 dark:hover:bg-rose-950 transition cursor-pointer"
               title="Expand player"
             >
               <Maximize2 className="w-4 h-4" />
@@ -227,10 +351,11 @@ export const FloatingMusicPlayer: React.FC<FloatingMusicPlayerProps> = ({
             animate={{ opacity: 1 }}
             className="w-80 p-4 flex flex-col gap-3 relative"
           >
-            {/* Top Bar Header */}
+            {/* Top Bar Header with Drag Grip */}
             <div className="flex items-center justify-between pb-2 border-b border-rose-100 dark:border-slate-800/80">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-rose-500/10 flex items-center justify-center">
+              <div className="flex items-center gap-1.5 cursor-grab">
+                <GripVertical className="w-4 h-4 text-rose-400/80 shrink-0" />
+                <div className="w-5 h-5 rounded-full bg-rose-500/10 flex items-center justify-center">
                   <Sparkles className="w-3.5 h-3.5 text-rose-500 animate-spin" />
                 </div>
                 <span className="text-xs font-black uppercase tracking-wider text-rose-600 dark:text-rose-400 flex items-center gap-1">
@@ -241,7 +366,9 @@ export const FloatingMusicPlayer: React.FC<FloatingMusicPlayerProps> = ({
                 {songs.length > 1 && (
                   <button
                     onClick={() => setShowPlaylist(!showPlaylist)}
-                    className={`p-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1 ${
+                    onPointerDown={stopProp}
+                    onTouchStart={stopProp}
+                    className={`p-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1 cursor-pointer ${
                       showPlaylist
                         ? 'bg-rose-500 text-white shadow-sm'
                         : 'text-slate-500 hover:bg-rose-50 dark:hover:bg-rose-950/60'
@@ -254,7 +381,9 @@ export const FloatingMusicPlayer: React.FC<FloatingMusicPlayerProps> = ({
                 )}
                 <button
                   onClick={() => setIsMinimized(true)}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-rose-50 dark:hover:bg-slate-800 transition"
+                  onPointerDown={stopProp}
+                  onTouchStart={stopProp}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-rose-50 dark:hover:bg-slate-800 transition cursor-pointer"
                   title="Minimize player"
                 >
                   <Minus className="w-4 h-4" />
@@ -269,6 +398,8 @@ export const FloatingMusicPlayer: React.FC<FloatingMusicPlayerProps> = ({
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
+                  onPointerDown={stopProp}
+                  onTouchStart={stopProp}
                   className="overflow-hidden bg-rose-50/70 dark:bg-slate-950/80 rounded-2xl border border-rose-200 dark:border-rose-900/60 p-2 max-h-40 overflow-y-auto space-y-1 text-xs"
                 >
                   <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2 py-1">
@@ -284,7 +415,9 @@ export const FloatingMusicPlayer: React.FC<FloatingMusicPlayerProps> = ({
                           setIsPlaying(true);
                           setShowPlaylist(false);
                         }}
-                        className={`w-full text-left px-3 py-1.5 rounded-xl flex items-center justify-between font-semibold transition ${
+                        onPointerDown={stopProp}
+                        onTouchStart={stopProp}
+                        className={`w-full text-left px-3 py-1.5 rounded-xl flex items-center justify-between font-semibold transition cursor-pointer ${
                           isCurrent
                             ? 'bg-rose-500 text-white shadow-sm'
                             : 'hover:bg-rose-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
@@ -318,7 +451,7 @@ export const FloatingMusicPlayer: React.FC<FloatingMusicPlayerProps> = ({
                 <h4 className="text-sm font-black text-slate-900 dark:text-white truncate">
                   {currentSong.title || 'Untitled Track'}
                 </h4>
-                
+
                 {/* Cute Animated Soundwave Bars */}
                 <div className="flex items-center gap-1.5 mt-1">
                   <div className="flex items-end gap-0.5 h-3">
@@ -351,6 +484,8 @@ export const FloatingMusicPlayer: React.FC<FloatingMusicPlayerProps> = ({
                 max={duration || 100}
                 value={currentTime}
                 onChange={handleSeek}
+                onPointerDown={stopProp}
+                onTouchStart={stopProp}
                 className="w-full accent-rose-500 h-1.5 bg-rose-100 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer"
               />
               <div className="flex justify-between text-[10px] text-slate-400 font-mono font-bold">
@@ -363,7 +498,9 @@ export const FloatingMusicPlayer: React.FC<FloatingMusicPlayerProps> = ({
             <div className="flex items-center justify-between px-1">
               <button
                 onClick={() => setIsShuffle(!isShuffle)}
-                className={`p-2 rounded-xl transition ${
+                onPointerDown={stopProp}
+                onTouchStart={stopProp}
+                className={`p-2 rounded-xl transition cursor-pointer ${
                   isShuffle
                     ? 'text-rose-600 bg-rose-100 dark:bg-rose-950 font-bold'
                     : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
@@ -375,7 +512,9 @@ export const FloatingMusicPlayer: React.FC<FloatingMusicPlayerProps> = ({
 
               <button
                 onClick={handlePrev}
-                className="p-2 text-slate-600 dark:text-slate-300 hover:text-rose-500 transition active:scale-95"
+                onPointerDown={stopProp}
+                onTouchStart={stopProp}
+                className="p-2 text-slate-600 dark:text-slate-300 hover:text-rose-500 transition active:scale-95 cursor-pointer"
                 title="Previous Track"
               >
                 <SkipBack className="w-5 h-5 fill-current" />
@@ -383,7 +522,9 @@ export const FloatingMusicPlayer: React.FC<FloatingMusicPlayerProps> = ({
 
               <button
                 onClick={togglePlay}
-                className="p-3.5 rounded-full bg-gradient-to-tr from-pink-500 via-rose-500 to-amber-500 text-white hover:scale-110 active:scale-95 transition-all shadow-xl shadow-rose-500/40 border-2 border-white/40"
+                onPointerDown={stopProp}
+                onTouchStart={stopProp}
+                className="p-3.5 rounded-full bg-gradient-to-tr from-pink-500 via-rose-500 to-amber-500 text-white hover:scale-110 active:scale-95 transition-all shadow-xl shadow-rose-500/40 border-2 border-white/40 cursor-pointer"
                 title={isPlaying ? 'Pause' : 'Play'}
               >
                 {isPlaying ? (
@@ -395,7 +536,9 @@ export const FloatingMusicPlayer: React.FC<FloatingMusicPlayerProps> = ({
 
               <button
                 onClick={handleNext}
-                className="p-2 text-slate-600 dark:text-slate-300 hover:text-rose-500 transition active:scale-95"
+                onPointerDown={stopProp}
+                onTouchStart={stopProp}
+                className="p-2 text-slate-600 dark:text-slate-300 hover:text-rose-500 transition active:scale-95 cursor-pointer"
                 title="Next Track"
               >
                 <SkipForward className="w-5 h-5 fill-current" />
@@ -403,7 +546,9 @@ export const FloatingMusicPlayer: React.FC<FloatingMusicPlayerProps> = ({
 
               <button
                 onClick={() => setIsLoop(!isLoop)}
-                className={`p-2 rounded-xl transition ${
+                onPointerDown={stopProp}
+                onTouchStart={stopProp}
+                className={`p-2 rounded-xl transition cursor-pointer ${
                   isLoop
                     ? 'text-rose-600 bg-rose-100 dark:bg-rose-950 font-bold'
                     : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
@@ -418,7 +563,9 @@ export const FloatingMusicPlayer: React.FC<FloatingMusicPlayerProps> = ({
             <div className="flex items-center gap-2 pt-2 border-t border-rose-100 dark:border-slate-800/80">
               <button
                 onClick={toggleMute}
-                className="text-slate-400 hover:text-rose-500 transition"
+                onPointerDown={stopProp}
+                onTouchStart={stopProp}
+                className="text-slate-400 hover:text-rose-500 transition cursor-pointer"
               >
                 {isMuted || volume === 0 ? (
                   <VolumeX className="w-4 h-4 text-rose-500" />
@@ -433,6 +580,8 @@ export const FloatingMusicPlayer: React.FC<FloatingMusicPlayerProps> = ({
                 step="0.01"
                 value={isMuted ? 0 : volume}
                 onChange={handleVolumeChange}
+                onPointerDown={stopProp}
+                onTouchStart={stopProp}
                 className="w-full accent-rose-500 h-1.5 bg-rose-100 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer"
               />
             </div>
@@ -442,4 +591,3 @@ export const FloatingMusicPlayer: React.FC<FloatingMusicPlayerProps> = ({
     </>
   );
 };
-

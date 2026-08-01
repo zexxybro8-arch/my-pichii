@@ -8,7 +8,6 @@ import {
   collection,
   getDocs,
   onSnapshot,
-  getDocFromServer,
   Firestore,
 } from 'firebase/firestore';
 import {
@@ -64,18 +63,15 @@ try {
 
 export { app, db, auth, storage };
 
-// Connection test on boot
-export async function testConnection() {
-  if (!db) return;
-  try {
-    await getDocFromServer(doc(db, 'appConfig', 'draft'));
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.error('Please check your Firebase configuration.');
-    }
-  }
+// Helper to prevent hanging on network timeouts
+function withTimeout<T>(promise: Promise<T>, ms = 4000): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error('Firestore request timeout')), ms)
+    ),
+  ]);
 }
-testConnection();
 
 const LOCAL_STORAGE_KEY_DRAFT = 'romantic_surprise_draft_v1';
 const LOCAL_STORAGE_KEY_PUBLISHED = 'romantic_surprise_published_v1';
@@ -135,7 +131,7 @@ export async function fetchAppConfig(isPublished = false): Promise<AppConfig> {
   if (db) {
     try {
       const configDoc = doc(db, 'appConfig', docId);
-      const snap = await getDoc(configDoc);
+      const snap = await withTimeout(getDoc(configDoc), 4000);
       if (snap.exists()) {
         return snap.data() as AppConfig;
       }
@@ -143,19 +139,19 @@ export async function fetchAppConfig(isPublished = false): Promise<AppConfig> {
       // If docId doesn't exist, try alternative docId before defaulting
       const altDocId = isPublished ? 'draft' : 'published';
       const altDoc = doc(db, 'appConfig', altDocId);
-      const altSnap = await getDoc(altDoc);
+      const altSnap = await withTimeout(getDoc(altDoc), 4000);
       if (altSnap.exists()) {
         const altData = altSnap.data() as AppConfig;
-        await setDoc(configDoc, altData);
+        await setDoc(configDoc, altData).catch(() => {});
         return altData;
       }
 
       // Initialize defaults in Firestore if empty
-      await setDoc(doc(db, 'appConfig', 'draft'), INITIAL_DEFAULT_CONFIG);
-      await setDoc(doc(db, 'appConfig', 'published'), INITIAL_DEFAULT_CONFIG);
+      await setDoc(doc(db, 'appConfig', 'draft'), INITIAL_DEFAULT_CONFIG).catch(() => {});
+      await setDoc(doc(db, 'appConfig', 'published'), INITIAL_DEFAULT_CONFIG).catch(() => {});
       return INITIAL_DEFAULT_CONFIG;
     } catch (e) {
-      console.warn('Firestore fetch config error:', e);
+      console.warn('Firestore fetch config fallback to local:', e);
     }
   }
   return getLocalConfig(isPublished);
@@ -170,13 +166,15 @@ export async function saveAppConfig(config: AppConfig, isPublished = false): Pro
     try {
       const draftDoc = doc(db, 'appConfig', 'draft');
       const pubDoc = doc(db, 'appConfig', 'published');
-      await Promise.all([
-        setDoc(draftDoc, updatedConfig, { merge: true }),
-        setDoc(pubDoc, updatedConfig, { merge: true }),
-      ]);
+      await withTimeout(
+        Promise.all([
+          setDoc(draftDoc, updatedConfig, { merge: true }),
+          setDoc(pubDoc, updatedConfig, { merge: true }),
+        ]),
+        5000
+      );
     } catch (e) {
-      console.error('Firestore save config error:', e);
-      throw e;
+      console.warn('Firestore save config error (local fallback saved):', e);
     }
   }
 }
@@ -189,7 +187,7 @@ export async function fetchMemories(): Promise<MemoryPhoto[]> {
   if (db) {
     try {
       const colRef = collection(db, 'memories');
-      const snap = await getDocs(colRef);
+      const snap = await withTimeout(getDocs(colRef), 4000);
       if (!snap.empty) {
         const list: MemoryPhoto[] = [];
         snap.forEach((d) => list.push(d.data() as MemoryPhoto));
@@ -198,12 +196,12 @@ export async function fetchMemories(): Promise<MemoryPhoto[]> {
       } else {
         // Seed default memories to Firestore
         for (const mem of INITIAL_DEFAULT_MEMORIES) {
-          await setDoc(doc(db, 'memories', mem.id), mem);
+          await setDoc(doc(db, 'memories', mem.id), mem).catch(() => {});
         }
         return INITIAL_DEFAULT_MEMORIES;
       }
     } catch (e) {
-      console.warn('Firestore memories fetch error:', e);
+      console.warn('Firestore memories fetch error, using local:', e);
     }
   }
   return getLocalMemories();
@@ -214,7 +212,7 @@ export async function saveMemories(memories: MemoryPhoto[]): Promise<void> {
   if (db) {
     try {
       const colRef = collection(db, 'memories');
-      const existingSnap = await getDocs(colRef);
+      const existingSnap = await withTimeout(getDocs(colRef), 4000);
       const existingIds = new Set<string>();
       existingSnap.forEach((d) => existingIds.add(d.id));
 
@@ -233,8 +231,7 @@ export async function saveMemories(memories: MemoryPhoto[]): Promise<void> {
       const setPromises = memories.map((mem) => setDoc(doc(db, 'memories', mem.id), mem));
       await Promise.all(setPromises);
     } catch (e) {
-      console.error('Firestore memories save error:', e);
-      throw e;
+      console.warn('Firestore memories save error (local saved):', e);
     }
   }
 }
@@ -283,7 +280,7 @@ export async function fetchSongs(): Promise<Song[]> {
   if (db) {
     try {
       const colRef = collection(db, 'songs');
-      const snap = await getDocs(colRef);
+      const snap = await withTimeout(getDocs(colRef), 4000);
       if (!snap.empty) {
         const list: Song[] = [];
         snap.forEach((d) => {
@@ -304,11 +301,11 @@ export async function fetchSongs(): Promise<Song[]> {
 
       // Seed default songs to Firestore
       for (const song of INITIAL_DEFAULT_SONGS) {
-        await setDoc(doc(db, 'songs', song.id), song);
+        await setDoc(doc(db, 'songs', song.id), song).catch(() => {});
       }
       return INITIAL_DEFAULT_SONGS;
     } catch (e) {
-      console.warn('Firestore songs fetch error:', e);
+      console.warn('Firestore songs fetch error, using local:', e);
     }
   }
   return getLocalSongs().filter((s) => s.url && !s.url.startsWith('data:audio'));
@@ -322,7 +319,7 @@ export async function saveSongs(songs: Song[]): Promise<void> {
   if (db) {
     try {
       const colRef = collection(db, 'songs');
-      const existingSnap = await getDocs(colRef);
+      const existingSnap = await withTimeout(getDocs(colRef), 4000);
       const existingIds = new Set<string>();
       existingSnap.forEach((s) => existingIds.add(s.id));
 
@@ -353,8 +350,7 @@ export async function saveSongs(songs: Song[]): Promise<void> {
       });
       await Promise.all(setPromises);
     } catch (e) {
-      console.error('Firestore songs save error:', e);
-      throw e;
+      console.warn('Firestore songs save error (local saved):', e);
     }
   }
 }
@@ -381,6 +377,57 @@ export function subscribeToConfig(
   return () => {};
 }
 
+// Persistent Floating Music Player Position State
+const LOCAL_STORAGE_KEY_MUSIC_POS = 'romantic_surprise_music_player_pos_v1';
+
+export interface WidgetPosition {
+  x: number;
+  y: number;
+}
+
+export async function fetchMusicPlayerPosition(): Promise<WidgetPosition | null> {
+  if (db) {
+    try {
+      const posDoc = doc(db, 'widgetState', 'musicPlayer');
+      const snap = await withTimeout(getDoc(posDoc), 3000);
+      if (snap.exists()) {
+        const data = snap.data();
+        if (typeof data.x === 'number' && typeof data.y === 'number') {
+          const pos = { x: data.x, y: data.y };
+          localStorage.setItem(LOCAL_STORAGE_KEY_MUSIC_POS, JSON.stringify(pos));
+          return pos;
+        }
+      }
+    } catch (e) {
+      console.warn('Firestore fetch position error, using local fallback:', e);
+    }
+  }
+
+  const saved = localStorage.getItem(LOCAL_STORAGE_KEY_MUSIC_POS);
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      if (typeof parsed.x === 'number' && typeof parsed.y === 'number') {
+        return parsed;
+      }
+    } catch {}
+  }
+
+  return null;
+}
+
+export async function saveMusicPlayerPosition(pos: WidgetPosition): Promise<void> {
+  localStorage.setItem(LOCAL_STORAGE_KEY_MUSIC_POS, JSON.stringify(pos));
+  if (db) {
+    try {
+      const posDoc = doc(db, 'widgetState', 'musicPlayer');
+      await setDoc(posDoc, { x: pos.x, y: pos.y, updatedAt: new Date().toISOString() }, { merge: true });
+    } catch (e) {
+      console.warn('Firestore save position error (local fallback saved):', e);
+    }
+  }
+}
+
 // Secure Admin Passcode Authentication with SHA-256 and Firestore
 async function hashPasscode(passcode: string): Promise<string> {
   const msgBuffer = new TextEncoder().encode(passcode);
@@ -395,7 +442,7 @@ export async function verifyAdminPasscode(enteredPasscode: string): Promise<bool
   if (db) {
     try {
       const passDocRef = doc(db, 'adminAuth', 'passcode');
-      const snap = await getDoc(passDocRef);
+      const snap = await withTimeout(getDoc(passDocRef), 4000);
       if (snap.exists()) {
         const storedHash = snap.data().hash;
         return enteredHash === storedHash;
@@ -405,7 +452,7 @@ export async function verifyAdminPasscode(enteredPasscode: string): Promise<bool
         await setDoc(passDocRef, {
           hash: defaultHash,
           updatedAt: new Date().toISOString(),
-        });
+        }).catch(() => {});
         return enteredHash === defaultHash;
       }
     } catch (e) {
@@ -416,4 +463,5 @@ export async function verifyAdminPasscode(enteredPasscode: string): Promise<bool
   const defaultHash = await hashPasscode('9875');
   return enteredHash === defaultHash;
 }
+
 

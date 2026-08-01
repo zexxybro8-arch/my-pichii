@@ -1,15 +1,23 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Calendar, Clock, ArrowRight } from 'lucide-react';
+import { Calendar, Clock, ArrowRight, Pause, Play, Sparkles } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { AppConfig } from '../../types';
+import {
+  parseRelationshipStartDate,
+  getCalendarTimeTogether,
+  getCalendarAnniversaryCountdown,
+  formatReadableDate,
+  formatReadableTime,
+} from '../../utils/dateUtils';
+import { Tilt3DCard } from '../3d/Tilt3DCard';
 
 interface HeroSectionProps {
   config: AppConfig;
   onNextStep?: () => void;
 }
 
-// CUTE ANIMATED KITTEN COMPONENT MATCHING THE USER's IMAGE
+// CUTE ANIMATED KITTEN COMPONENT MATCHING THE USER'S IMAGE
 const CuteKitten: React.FC<{ hasBow?: boolean; className?: string }> = ({ hasBow = true, className = '' }) => {
   return (
     <div className={`absolute -top-14 sm:-top-16 left-1/2 -translate-x-1/2 z-30 pointer-events-none flex flex-col items-center ${className}`}>
@@ -174,6 +182,51 @@ const FloatingButterfly: React.FC<{ x: number; y: number; delay: number }> = ({ 
 };
 
 export const HeroSection: React.FC<HeroSectionProps> = ({ config, onNextStep }) => {
+  // Extract anniversary settings & dynamic config
+  const annivSettings = config.anniversarySettings || {};
+  
+  const titleText = annivSettings.title || 'Hey';
+  const girlfriendName = config.girlfriendName || 'Picchi';
+  const subtitleText = annivSettings.subtitle || 'Welcome to Our Beautiful Journey of Love & Cute Memories 💕';
+  const togetherSinceLabel = annivSettings.togetherSinceLabel || 'Together Since';
+  const milestoneMessage = annivSettings.milestoneMessage || '💕 Every second with you is my favorite memory. 💕';
+  const cardTitle = annivSettings.cardTitle || annivSettings.titleCountdownCard || 'Until Our Next Anniversary';
+  const cardBadge = annivSettings.cardBadge || 'Next Anniversary';
+  const milestoneReachedTitle = annivSettings.milestoneReachedTitle || 'Happy Anniversary My Love! 🎉';
+  const milestoneReachedMessage = annivSettings.milestoneReachedMessage || 'Thank you for being my soulmate, my best friend, and my greatest dream come true.';
+  const progressTitle = annivSettings.progressTitle || 'Our Love Journey Progress';
+  const progressSubtitle = annivSettings.progressSubtitle || 'Every heartbeat brings us closer to our special day 💕';
+  const buttonText = annivSettings.buttonText || 'Continue Our Journey';
+
+  // Unit Labels
+  const labelYears = annivSettings.customLabelYears || 'YEARS';
+  const labelMonths = annivSettings.customLabelMonths || 'MONTHS';
+  const labelDays = annivSettings.customLabelDays || 'DAYS';
+  const labelHours = annivSettings.customLabelHours || 'HOURS';
+  const labelMinutes = annivSettings.customLabelMinutes || 'MINUTES';
+  const labelSeconds = annivSettings.customLabelSeconds || 'SECONDS';
+
+  // Emojis
+  const emojiYears = annivSettings.emojiYears || '👑';
+  const emojiMonths = annivSettings.emojiMonths || '🤍';
+  const emojiDays = annivSettings.emojiDays || '⭐';
+  const emojiHours = annivSettings.emojiHours || '🕐';
+  const emojiMinutes = annivSettings.emojiMinutes || '⏱️';
+  const emojiSeconds = annivSettings.emojiSeconds || '✨';
+  const emojiCountdownCard = annivSettings.emojiCountdownCard || '💖';
+  const emojiGreetingHeart = annivSettings.emojiGreetingHeart || '❤️';
+  const emojiMainHeader = annivSettings.emojiMainHeader || '✨';
+  const emojiButton = annivSettings.emojiButton || '💖';
+
+  // Date Strings
+  const rawStartDate = annivSettings.relationshipStartDate || config.relationshipStartDate || '2025-03-21T11:20:43';
+  const rawTargetDate = annivSettings.countdownTargetDate || annivSettings.anniversaryDate || config.anniversaryDate || '2027-03-21T11:20:43';
+
+  // Pause / Resume States
+  const isPaused = annivSettings.isPaused || false;
+  const pausedAt = annivSettings.pausedAt;
+  const pausedRemainingSeconds = annivSettings.pausedRemainingSeconds;
+
   // TIME TOGETHER (6 UNITS: Years, Months, Days, Hours, Minutes, Seconds)
   const [timeTogether, setTimeTogether] = useState({
     years: 0,
@@ -184,8 +237,9 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ config, onNextStep }) 
     seconds: 0,
   });
 
-  // NEXT ANNIVERSARY COUNTDOWN (5 UNITS: Months, Days, Hours, Minutes, Seconds)
+  // NEXT ANNIVERSARY COUNTDOWN (6 UNITS: Years, Months, Days, Hours, Minutes, Seconds)
   const [anniversaryCountdown, setAnniversaryCountdown] = useState({
+    years: 0,
     months: 0,
     days: 0,
     hours: 0,
@@ -194,6 +248,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ config, onNextStep }) 
     isReached: false,
     progressPercent: 0,
     formattedTargetDate: '',
+    isPaused: false,
   });
 
   const confettiFiredRef = useRef(false);
@@ -225,167 +280,40 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ config, onNextStep }) 
     const calculateAllTimes = () => {
       const now = new Date();
 
-      // ==========================================
-      // 1. TIME TOGETHER CALCULATIONS (21 March 2025 • 11:20:43 AM)
-      // ==========================================
-      const rawStart =
-        config.relationshipStartDate ||
-        config.anniversarySettings?.relationshipStartDate ||
-        '2025-03-21T11:20:43';
+      // 1. Calendar-accurate time together
+      const timeData = getCalendarTimeTogether(rawStartDate, now, isPaused, pausedAt);
+      setTimeTogether(timeData);
 
-      let startDate: Date;
-      if (rawStart && !rawStart.includes('2022')) {
-        if (rawStart.includes('T')) {
-          startDate = new Date(rawStart);
-        } else {
-          startDate = new Date(`${rawStart}T11:20:43`);
-        }
-      } else {
-        startDate = new Date(2025, 2, 21, 11, 20, 43); // 21 March 2025 11:20:43 AM
-      }
+      // 2. Calendar-accurate next anniversary countdown
+      const countdownData = getCalendarAnniversaryCountdown(
+        rawStartDate,
+        rawTargetDate,
+        now,
+        isPaused,
+        pausedAt,
+        pausedRemainingSeconds
+      );
 
-      if (isNaN(startDate.getTime())) {
-        startDate = new Date(2025, 2, 21, 11, 20, 43);
-      }
-
-      if (now >= startDate) {
-        let cursor = new Date(startDate.getTime());
-
-        // Years calculation
-        let years = 0;
-        while (true) {
-          const nextYear = new Date(cursor.getTime());
-          nextYear.setFullYear(nextYear.getFullYear() + 1);
-          if (nextYear <= now) {
-            years++;
-            cursor = nextYear;
-          } else {
-            break;
-          }
-        }
-
-        // Months calculation
-        let months = 0;
-        while (true) {
-          const nextMonth = new Date(cursor.getTime());
-          nextMonth.setMonth(nextMonth.getMonth() + 1);
-          if (nextMonth <= now) {
-            months++;
-            cursor = nextMonth;
-          } else {
-            break;
-          }
-        }
-
-        // Days, Hours, Minutes, Seconds calculation
-        const remainingMs = Math.max(0, now.getTime() - cursor.getTime());
-        const totalSecs = Math.floor(remainingMs / 1000);
-        const days = Math.floor(totalSecs / 86400);
-        const hours = Math.floor((totalSecs % 86400) / 3600);
-        const minutes = Math.floor((totalSecs % 3600) / 60);
-        const seconds = totalSecs % 60;
-
-        setTimeTogether({
-          years,
-          months,
-          days,
-          hours,
-          minutes,
-          seconds,
-        });
-      } else {
-        setTimeTogether({ years: 0, months: 0, days: 0, hours: 0, minutes: 0, seconds: 0 });
-      }
-
-      // ==========================================
-      // 2. NEXT ANNIVERSARY COUNTDOWN (Target: 21 March 2027)
-      // ==========================================
-      let targetAnniversary = new Date(2027, 2, 21, 0, 0, 0, 0);
-
-      const rawAnniv =
-        config.anniversaryDate || config.anniversarySettings?.anniversaryDate;
-      if (rawAnniv && !rawAnniv.includes('02-14') && !rawAnniv.includes('14 February')) {
-        const cleanAnnivStr = rawAnniv.split('T')[0];
-        const parts = cleanAnnivStr.split('-').map((p) => parseInt(p, 10));
-        if (parts.length >= 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
-          targetAnniversary = new Date(parts[0], parts[1] - 1, parts[2], 0, 0, 0, 0);
-        }
-      }
-
-      if (now.getTime() >= targetAnniversary.getTime() + 86400000) {
-        const nextYear =
-          now.getFullYear() +
-          (now.getMonth() > 2 || (now.getMonth() === 2 && now.getDate() >= 22) ? 1 : 0);
-        targetAnniversary = new Date(nextYear, 2, 21, 0, 0, 0, 0);
-      }
-
-      const formattedTargetDate = targetAnniversary.toLocaleDateString('en-GB', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
+      setAnniversaryCountdown({
+        years: countdownData.years,
+        months: countdownData.months,
+        days: countdownData.days,
+        hours: countdownData.hours,
+        minutes: countdownData.minutes,
+        seconds: countdownData.seconds,
+        isReached: countdownData.isReached,
+        progressPercent: countdownData.progressPercent,
+        formattedTargetDate: countdownData.formattedTargetDate,
+        isPaused: countdownData.isPaused,
       });
 
-      // Progress bar calculation from Start Date (21 March 2025) to Target Date (21 March 2027)
-      const journeyStart = startDate.getTime();
-      const journeyTarget = targetAnniversary.getTime();
-      const totalSpan = journeyTarget - journeyStart;
-      const elapsedSpan = now.getTime() - journeyStart;
-      const progressPercent = Math.min(100, Math.max(0, (elapsedSpan / totalSpan) * 100));
-
-      const annivDiffMs = targetAnniversary.getTime() - now.getTime();
-
-      if (annivDiffMs <= 0 && annivDiffMs > -86400000) {
-        setAnniversaryCountdown({
-          months: 0,
-          days: 0,
-          hours: 0,
-          minutes: 0,
-          seconds: 0,
-          isReached: true,
-          progressPercent: 100,
-          formattedTargetDate,
-        });
-
-        if (!confettiFiredRef.current) {
-          confettiFiredRef.current = true;
-          confetti({
-            particleCount: 260,
-            spread: 120,
-            origin: { y: 0.5 },
-            colors: ['#f59e0b', '#ec4899', '#ef4444', '#fcd34d', '#ffffff', '#e11d48'],
-          });
-        }
-      } else {
-        let cursor = new Date(now.getTime());
-        let months = 0;
-
-        while (true) {
-          const nextMonth = new Date(cursor.getTime());
-          nextMonth.setMonth(nextMonth.getMonth() + 1);
-          if (nextMonth <= targetAnniversary) {
-            months++;
-            cursor = nextMonth;
-          } else {
-            break;
-          }
-        }
-
-        const remainingMs = Math.max(0, targetAnniversary.getTime() - cursor.getTime());
-        const totalSecs = Math.floor(remainingMs / 1000);
-        const days = Math.floor(totalSecs / 86400);
-        const hours = Math.floor((totalSecs % 86400) / 3600);
-        const minutes = Math.floor((totalSecs % 3600) / 60);
-        const seconds = totalSecs % 60;
-
-        setAnniversaryCountdown({
-          months,
-          days,
-          hours,
-          minutes,
-          seconds,
-          isReached: false,
-          progressPercent,
-          formattedTargetDate,
+      if (countdownData.isReached && !confettiFiredRef.current) {
+        confettiFiredRef.current = true;
+        confetti({
+          particleCount: 260,
+          spread: 120,
+          origin: { y: 0.5 },
+          colors: ['#f59e0b', '#ec4899', '#ef4444', '#fcd34d', '#ffffff', '#e11d48'],
         });
       }
     };
@@ -393,12 +321,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ config, onNextStep }) 
     calculateAllTimes();
     const timer = setInterval(calculateAllTimes, 1000);
     return () => clearInterval(timer);
-  }, [
-    config.relationshipStartDate,
-    config.anniversaryDate,
-    config.anniversarySettings?.relationshipStartDate,
-    config.anniversarySettings?.anniversaryDate,
-  ]);
+  }, [rawStartDate, rawTargetDate, isPaused, pausedAt, pausedRemainingSeconds]);
 
   return (
     <section id="hero" className="relative pt-16 pb-20 px-4 text-center overflow-hidden bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-slate-950 to-black text-white min-h-screen flex flex-col items-center justify-center">
@@ -463,53 +386,53 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ config, onNextStep }) 
         {/* ======================================================== */}
         {/* TOP HEADER CARD WITH CUTE KITTEN ON TOP                   */}
         {/* ======================================================== */}
-        <div className="relative max-w-2xl mx-auto mb-10 mt-6">
+        <div className="relative max-w-2xl mx-auto mb-10 mt-6 z-20">
           <CuteKitten hasBow={true} />
           
-          <div className="bg-slate-950/90 backdrop-blur-2xl rounded-3xl p-6 sm:p-8 border border-rose-500/40 shadow-[0_0_50px_rgba(244,114,182,0.3)] relative overflow-hidden">
+          <Tilt3DCard maxTilt={8} className="p-6 sm:p-8 border-rose-500/40 shadow-[0_0_50px_rgba(244,114,182,0.3)]">
             {/* Glow background inside card */}
             <div className="absolute inset-0 bg-gradient-to-r from-rose-500/10 via-amber-500/10 to-rose-500/10 pointer-events-none" />
             
             <h1 className="font-cute text-[48px] sm:text-7xl font-extrabold tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-rose-500 to-amber-300 mb-5 relative z-30 leading-tight text-center flex items-center justify-center gap-3 flex-wrap drop-shadow-[0_6px_25px_rgba(255,94,126,0.45)]">
-              <span>Hey</span>
+              <span>{titleText}</span>
               <span className="bg-clip-text text-transparent bg-gradient-to-r from-pink-400 via-rose-500 to-amber-300 hover:scale-105 transition-transform inline-block">
-                {config.girlfriendName || 'Picchi'}
+                {girlfriendName}
               </span>
-              <span className="text-pink-500 inline-block animate-bounce">❤️</span>
-              <span className="text-pink-400 inline-block text-2xl sm:text-4xl animate-pulse">✨</span>
+              <span className="text-pink-500 inline-block animate-bounce">{emojiGreetingHeart}</span>
+              <span className="text-pink-400 inline-block text-2xl sm:text-4xl animate-pulse">{emojiMainHeader}</span>
             </h1>
 
             <p className="text-base sm:text-xl text-rose-200 font-bold max-w-md mx-auto mb-6 leading-relaxed relative z-20 font-serif italic">
-              Welcome to Our Beautiful Journey of Love & Cute Memories 💕
+              {subtitleText}
             </p>
 
             <div className="flex items-center justify-center gap-2 text-rose-300/90 font-bold text-xs sm:text-sm tracking-widest uppercase mb-3">
               <span>💕</span>
-              <span>Together Since</span>
+              <span>{togetherSinceLabel}</span>
               <span>💕</span>
             </div>
 
             <div className="inline-flex items-center gap-2.5 px-5 py-2 rounded-full bg-slate-900/90 border border-amber-400/50 text-amber-300 font-mono text-xs sm:text-sm font-bold shadow-lg">
               <Calendar className="w-4 h-4 text-amber-400" />
-              <span>21 March 2025</span>
+              <span>{formatReadableDate(rawStartDate)}</span>
               <span className="text-rose-400">•</span>
               <Clock className="w-4 h-4 text-amber-400" />
-              <span>11:20:43 AM</span>
+              <span>{formatReadableTime(rawStartDate)}</span>
             </div>
-          </div>
+          </Tilt3DCard>
         </div>
 
         {/* ======================================================== */}
-        {/* RELATIONSHIP TIMER CARDS (3x2 GRID MATCHING THE IMAGE)     */}
+        {/* RELATIONSHIP TIMER CARDS (3x2 GRID WITH 3D SPATIAL TILT) */}
         {/* ======================================================== */}
-        <div className="grid grid-cols-3 gap-3 sm:gap-4 max-w-2xl mx-auto mb-5">
+        <div className="grid grid-cols-3 gap-3 sm:gap-4 max-w-2xl mx-auto mb-5 z-20">
           {[
-            { label: 'YEARS', val: timeTogether.years, icon: '👑' },
-            { label: 'MONTHS', val: timeTogether.months, icon: '🤍' },
-            { label: 'DAYS', val: timeTogether.days, icon: '⭐' },
-            { label: 'HOURS', val: timeTogether.hours, icon: '🕐' },
-            { label: 'MINUTES', val: timeTogether.minutes, icon: '⏱️' },
-            { label: 'SECONDS', val: timeTogether.seconds, icon: '✨' },
+            { label: labelYears, val: timeTogether.years, icon: emojiYears },
+            { label: labelMonths, val: timeTogether.months, icon: emojiMonths },
+            { label: labelDays, val: timeTogether.days, icon: emojiDays },
+            { label: labelHours, val: timeTogether.hours, icon: emojiHours },
+            { label: labelMinutes, val: timeTogether.minutes, icon: emojiMinutes },
+            { label: labelSeconds, val: timeTogether.seconds, icon: emojiSeconds },
           ].map((unit, idx) => {
             const valStr = String(unit.val).padStart(2, '0');
             return (
@@ -518,37 +441,37 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ config, onNextStep }) 
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: idx * 0.05 }}
-                whileHover={{ scale: 1.04, y: -2 }}
-                className="bg-slate-950/85 backdrop-blur-xl rounded-2xl p-3.5 sm:p-5 border border-rose-500/40 shadow-[0_0_25px_rgba(244,114,182,0.2)] flex flex-col items-center justify-center relative overflow-hidden group/card ring-1 ring-white/10"
               >
-                {/* Top Gold Foil Bar */}
-                <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-amber-400 via-rose-400 to-amber-300 opacity-80 group-hover/card:opacity-100 transition" />
-                
-                {/* Top Icon */}
-                <div className="text-base sm:text-lg mb-0.5 filter drop-shadow">
-                  {unit.icon}
-                </div>
+                <Tilt3DCard maxTilt={15} scaleOnHover={1.05} className="p-3.5 sm:p-5 flex flex-col items-center justify-center border-rose-500/40">
+                  {/* Top Gold Foil Bar */}
+                  <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-amber-400 via-rose-400 to-amber-300 opacity-80" />
+                  
+                  {/* Top Icon */}
+                  <div className="text-base sm:text-lg mb-0.5 filter drop-shadow">
+                    {unit.icon}
+                  </div>
 
-                {/* Animated Number with Smooth Flip Transition */}
-                <div className="relative h-9 sm:h-12 flex items-center justify-center overflow-hidden w-full">
-                  <AnimatePresence mode="popLayout">
-                    <motion.span
-                      key={valStr}
-                      initial={{ y: -18, opacity: 0 }}
-                      animate={{ y: 0, opacity: 1 }}
-                      exit={{ y: 18, opacity: 0 }}
-                      transition={{ duration: 0.3, ease: 'easeOut' }}
-                      className="inline-block font-mono text-3xl sm:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-b from-rose-100 via-rose-200 to-amber-200 tracking-tight drop-shadow-[0_0_14px_rgba(244,114,182,0.6)]"
-                    >
-                      {valStr}
-                    </motion.span>
-                  </AnimatePresence>
-                </div>
+                  {/* Animated Number with Smooth Flip Transition */}
+                  <div className="relative h-9 sm:h-12 flex items-center justify-center overflow-hidden w-full">
+                    <AnimatePresence mode="popLayout">
+                      <motion.span
+                        key={valStr}
+                        initial={{ y: -18, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        exit={{ y: 18, opacity: 0 }}
+                        transition={{ duration: 0.3, ease: 'easeOut' }}
+                        className="inline-block font-mono text-3xl sm:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-b from-rose-100 via-rose-200 to-amber-200 tracking-tight drop-shadow-[0_0_14px_rgba(244,114,182,0.6)]"
+                      >
+                        {valStr}
+                      </motion.span>
+                    </AnimatePresence>
+                  </div>
 
-                {/* Unit Label */}
-                <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-widest text-rose-300/90 font-mono mt-0.5">
-                  {unit.label}
-                </span>
+                  {/* Unit Label */}
+                  <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-widest text-rose-300/90 font-mono mt-0.5">
+                    {unit.label}
+                  </span>
+                </Tilt3DCard>
               </motion.div>
             );
           })}
@@ -556,7 +479,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ config, onNextStep }) 
 
         {/* Subtext under timer */}
         <p className="text-xs sm:text-sm font-bold text-rose-200/90 mb-14 tracking-wide">
-          💕 Every second with you is my favorite memory. 💕
+          {milestoneMessage}
         </p>
 
         {/* ======================================================== */}
@@ -569,79 +492,85 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ config, onNextStep }) 
             {/* Inner Ambient Glow */}
             <div className="absolute inset-0 bg-gradient-to-b from-rose-500/10 via-amber-500/5 to-transparent pointer-events-none" />
 
-            <h3 className="text-2xl sm:text-4xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-rose-100 to-amber-200 drop-shadow flex items-center justify-center gap-3 font-serif mb-8">
-              <span>💖</span>
-              <span>Until Our Next Anniversary</span>
-              <span>💖</span>
-            </h3>
-
-            {/* 5 COUNTDOWN CARDS WITH COLONS IN BETWEEN */}
-            {anniversaryCountdown.isReached ? (
-              <div className="py-8 flex flex-col items-center relative z-10">
-                <div className="text-6xl mb-4 animate-bounce">🎉🥂💖</div>
-                <h4 className="text-3xl font-black text-amber-300 mb-2 font-serif">
-                  Happy Anniversary My Love!
-                </h4>
-                <p className="text-rose-200 text-sm max-w-md mx-auto font-medium leading-relaxed">
-                  Thank you for being my soulmate, my best friend, and my greatest dream come true.
-                </p>
-              </div>
-            ) : (
-              <div className="flex items-center justify-center gap-1.5 sm:gap-3 my-6 max-w-2xl mx-auto">
-                {[
-                  { label: 'MONTHS', val: anniversaryCountdown.months },
-                  { label: 'DAYS', val: anniversaryCountdown.days },
-                  { label: 'HOURS', val: anniversaryCountdown.hours },
-                  { label: 'MINUTES', val: anniversaryCountdown.minutes },
-                  { label: 'SECONDS', val: anniversaryCountdown.seconds },
-                ].map((unit, idx, arr) => {
-                  const valStr = String(unit.val).padStart(2, '0');
-                  const Icon = idx < 2 ? Calendar : Clock;
-                  return (
-                    <React.Fragment key={unit.label}>
-                      <div className="flex-1 bg-slate-900/90 backdrop-blur-xl rounded-2xl p-3 sm:p-4 border border-rose-400/40 shadow-[0_4px_20px_rgba(244,114,182,0.2)] flex flex-col items-center justify-center relative group/card">
-                        <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400 mb-1" />
-                        <div className="relative h-9 sm:h-12 flex items-center justify-center overflow-hidden w-full">
-                          <AnimatePresence mode="popLayout">
-                            <motion.span
-                              key={valStr}
-                              initial={{ y: -18, opacity: 0 }}
-                              animate={{ y: 0, opacity: 1 }}
-                              exit={{ y: 18, opacity: 0 }}
-                              transition={{ duration: 0.3 }}
-                              className="font-mono text-2xl sm:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-b from-rose-100 via-rose-200 to-amber-200"
-                            >
-                              {valStr}
-                            </motion.span>
-                          </AnimatePresence>
-                        </div>
-                        <span className="text-[9px] sm:text-[11px] font-bold tracking-widest text-rose-300/80 font-mono mt-0.5">
-                          {unit.label}
-                        </span>
-                      </div>
-
-                      {/* Glowing Colon Separator */}
-                      {idx < arr.length - 1 && (
-                        <span className="text-rose-400 text-xl sm:text-2xl font-black animate-pulse px-0.5">
-                          :
-                        </span>
-                      )}
-                    </React.Fragment>
-                  );
-                })}
+            {/* Paused Badge Banner */}
+            {isPaused && (
+              <div className="mb-4 inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-500/20 border border-amber-400/60 text-amber-300 font-mono text-xs font-bold animate-pulse">
+                <Pause className="w-3.5 h-3.5 fill-amber-300" />
+                <span>TIMER PAUSED (ADMIN OVERRIDE)</span>
               </div>
             )}
+
+            {/* COUNTDOWN CARDS SECTION HEADER */}
+            <h3 className="text-2xl sm:text-4xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-rose-100 to-amber-200 drop-shadow flex items-center justify-center gap-3 font-serif mb-8">
+              <span>{emojiCountdownCard}</span>
+              <span>{cardTitle}</span>
+              <span>{emojiCountdownCard}</span>
+            </h3>
+
+            {/* MILESTONE REACHED BADGE */}
+            {anniversaryCountdown.isReached && (
+              <div className="mb-4 inline-flex items-center gap-2 px-5 py-2 rounded-full bg-gradient-to-r from-amber-500/20 to-rose-500/20 border border-amber-400/60 text-amber-200 font-bold text-xs sm:text-sm animate-pulse shadow-lg">
+                <Sparkles className="w-4 h-4 text-amber-300" />
+                <span>🎉 Anniversary Milestone Reached! ❤️</span>
+              </div>
+            )}
+
+            {/* 6 COUNTDOWN CARDS WITH COLONS IN BETWEEN */}
+            <div className="flex items-center justify-center gap-1 sm:gap-2.5 my-6 max-w-3xl mx-auto">
+              {[
+                { label: labelYears, val: anniversaryCountdown.years },
+                { label: labelMonths, val: anniversaryCountdown.months },
+                { label: labelDays, val: anniversaryCountdown.days },
+                { label: labelHours, val: anniversaryCountdown.hours },
+                { label: labelMinutes, val: anniversaryCountdown.minutes },
+                { label: labelSeconds, val: anniversaryCountdown.seconds },
+              ].map((unit, idx, arr) => {
+                const valStr = String(unit.val).padStart(2, '0');
+                const Icon = idx < 3 ? Calendar : Clock;
+                return (
+                  <React.Fragment key={unit.label}>
+                    <div className="flex-1 bg-slate-900/90 backdrop-blur-xl rounded-2xl p-2 sm:p-4 border border-rose-400/40 shadow-[0_4px_20px_rgba(244,114,182,0.2)] flex flex-col items-center justify-center relative group/card min-w-0">
+                      <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400 mb-1 shrink-0" />
+                      <div className="relative h-8 sm:h-12 flex items-center justify-center overflow-hidden w-full">
+                        <AnimatePresence mode="popLayout">
+                          <motion.span
+                            key={valStr}
+                            initial={{ y: -18, opacity: 0 }}
+                            animate={{ y: 0, opacity: 1 }}
+                            exit={{ y: 18, opacity: 0 }}
+                            transition={{ duration: 0.3 }}
+                            className="font-mono text-xl sm:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-b from-rose-100 via-rose-200 to-amber-200"
+                          >
+                            {valStr}
+                          </motion.span>
+                        </AnimatePresence>
+                      </div>
+                      <span className="text-[8px] sm:text-[11px] font-bold tracking-widest text-rose-300/80 font-mono mt-0.5 truncate max-w-full">
+                        {unit.label}
+                      </span>
+                    </div>
+
+                    {/* Glowing Colon Separator */}
+                    {idx < arr.length - 1 && (
+                      <span className="text-rose-400 text-sm sm:text-2xl font-black animate-pulse px-0.5 shrink-0">
+                        :
+                      </span>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </div>
 
             {/* Badge */}
             <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-slate-900/90 border border-amber-400/50 text-amber-300 font-mono text-xs sm:text-sm font-bold shadow-lg my-4">
               <Calendar className="w-4 h-4 text-amber-400" />
-              <span>Next Anniversary: 21 March 2027</span>
+              <span>{cardBadge}: {anniversaryCountdown.formattedTargetDate || formatReadableDate(rawTargetDate)}</span>
             </div>
 
             {/* Progress Bar Header */}
             <div className="flex items-center justify-center gap-2 text-rose-300 text-xs sm:text-sm font-bold tracking-widest uppercase mt-6 mb-3">
               <span>✦</span>
-              <span>💕 Our Love Journey Progress 💕</span>
+              <span>💕 {progressTitle} 💕</span>
               <span>✦</span>
             </div>
 
@@ -667,7 +596,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ config, onNextStep }) 
             </div>
 
             <p className="text-xs sm:text-sm font-bold text-rose-200/90 mt-4 tracking-wide">
-              Every heartbeat brings us closer to our special day 💕
+              {progressSubtitle}
             </p>
 
             {/* Continue Button */}
@@ -677,9 +606,9 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ config, onNextStep }) 
                   onClick={onNextStep}
                   className="relative group overflow-hidden px-8 py-3.5 rounded-full bg-gradient-to-r from-rose-500 via-pink-500 to-amber-400 text-white font-black text-xs sm:text-sm uppercase tracking-wider shadow-[0_0_35px_rgba(244,114,182,0.55)] border border-rose-300/80 hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer flex items-center gap-3"
                 >
-                  <span className="text-base">💖</span>
-                  <span>Continue Our Journey</span>
-                  <span className="text-base">💖</span>
+                  <span className="text-base">{emojiButton}</span>
+                  <span>{buttonText}</span>
+                  <span className="text-base">{emojiButton}</span>
                   <ArrowRight className="w-4 h-4 text-amber-200 group-hover:translate-x-1 transition-transform" />
                 </button>
               </div>
