@@ -589,8 +589,8 @@ export const ScratchCardSection: React.FC<ScratchCardSectionProps> = ({ config, 
         </motion.div>
       </div>
 
-      {/* CONTINUE TO NEXT STEP BUTTON */}
-      {onNextStep && (
+      {/* CONTINUE TO NEXT STEP BUTTON - ONLY shown when scratch card is revealed */}
+      {onNextStep && isRevealed && (
         <motion.div
           initial={{ opacity: 0, scale: 0.9, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -613,6 +613,20 @@ export const ScratchCardSection: React.FC<ScratchCardSectionProps> = ({ config, 
               <span className="relative z-10">{config.continueButtonText || 'Continue to Love Letter 💌'}</span>
               <ArrowRight className="w-5 h-5 relative z-10 group-hover:translate-x-1.5 transition-transform" />
             </button>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Progress hint when scratch card is not yet revealed */}
+      {onNextStep && !isRevealed && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="mt-8 text-center relative z-20 font-sans-ios"
+        >
+          <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/90 border border-[#D89CA4]/50 text-[#7C2D48] text-xs sm:text-sm font-bold shadow-sm backdrop-blur-md">
+            <Sparkles className="w-4 h-4 text-[#EBCB8B] animate-pulse" />
+            <span>Scratch the card to unlock and continue 🪙</span>
           </div>
         </motion.div>
       )}
